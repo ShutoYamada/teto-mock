@@ -1,0 +1,105 @@
+import { useState, useCallback } from 'react';
+import type { TetrominoCard } from '../types';
+import { BOARD_SIZE, canPlaceCard } from '../gameLogic';
+import type { BoardState } from '../types';
+import { TETROMINO_DEFS } from '../tetrominos';
+
+interface BoardProps {
+  board: BoardState;
+  selectedCard: TetrominoCard | null;
+  onCellClick: (row: number, col: number) => void;
+  clearedCells: Set<string>;
+}
+
+export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardProps) {
+  const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
+
+  const getPreviewCells = useCallback((): Set<string> => {
+    if (!selectedCard || !hoverCell) return new Set();
+    const cells = new Set<string>();
+    if (!canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col)) return cells;
+    for (let r = 0; r < selectedCard.shape.length; r++) {
+      for (let c = 0; c < selectedCard.shape[r].length; c++) {
+        if (selectedCard.shape[r][c]) {
+          cells.add(`${hoverCell.row + r},${hoverCell.col + c}`);
+        }
+      }
+    }
+    return cells;
+  }, [selectedCard, hoverCell, board]);
+
+  const isInvalidDrop = useCallback((): boolean => {
+    if (!selectedCard || !hoverCell) return false;
+    return !canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col);
+  }, [selectedCard, hoverCell, board]);
+
+  const getInvalidPreviewCells = useCallback((): Set<string> => {
+    if (!selectedCard || !hoverCell) return new Set();
+    const cells = new Set<string>();
+    if (canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col)) return cells;
+    // Show what the card would cover (clamped to board)
+    for (let r = 0; r < selectedCard.shape.length; r++) {
+      for (let c = 0; c < selectedCard.shape[r].length; c++) {
+        if (!selectedCard.shape[r][c]) continue;
+        const br = hoverCell.row + r;
+        const bc = hoverCell.col + c;
+        if (br >= 0 && br < BOARD_SIZE && bc >= 0 && bc < BOARD_SIZE) {
+          cells.add(`${br},${bc}`);
+        }
+      }
+    }
+    return cells;
+  }, [selectedCard, hoverCell, board]);
+
+  const previewCells = getPreviewCells();
+  const invalidCells = isInvalidDrop() ? getInvalidPreviewCells() : new Set<string>();
+
+  return (
+    <div className="board-wrapper">
+      <div
+        className="board"
+        style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
+      >
+        {board.map((row, r) =>
+          row.map((cell, c) => {
+            const key = `${r},${c}`;
+            const isPreview = previewCells.has(key);
+            const isInvalid = invalidCells.has(key);
+            const isCleared = clearedCells.has(key);
+            const color = cell ? TETROMINO_DEFS[cell].color : null;
+            const glow = cell ? TETROMINO_DEFS[cell].glowColor : null;
+
+            let cellClass = 'board-cell';
+            if (isPreview) cellClass += ' board-cell--preview';
+            if (isInvalid) cellClass += ' board-cell--invalid';
+            if (isCleared) cellClass += ' board-cell--cleared';
+            if (selectedCard) cellClass += ' board-cell--selectable';
+
+            return (
+              <div
+                key={key}
+                className={cellClass}
+                style={
+                  cell && !isCleared
+                    ? {
+                        backgroundColor: color!,
+                        boxShadow: `inset 0 0 8px rgba(255,255,255,0.3), 0 0 12px ${glow}`,
+                      }
+                    : isPreview && selectedCard
+                    ? {
+                        backgroundColor: selectedCard.color + '88',
+                        boxShadow: `0 0 10px ${selectedCard.glowColor}`,
+                      }
+                    : undefined
+                }
+                onClick={() => onCellClick(r, c)}
+                onMouseEnter={() => setHoverCell({ row: r, col: c })}
+                onMouseLeave={() => setHoverCell(null)}
+              />
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
