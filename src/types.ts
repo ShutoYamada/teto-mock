@@ -18,6 +18,13 @@ export type BoardState = CellValue[][];
 export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover';
 export type TurnState = 'player' | 'enemy';
 
+export interface Enemy {
+  id: string;
+  hp: number;
+  maxHp: number;
+  nextAttack: number;
+}
+
 export interface GameState {
   screen: ScreenState;
   board: BoardState;
@@ -25,6 +32,7 @@ export interface GameState {
   // Deck & Hand
   deck: TetrominoCard[];
   hand: TetrominoCard[];
+  discardPile: TetrominoCard[];
   selectedCardId: string | null;
   
   // Player Stats
@@ -39,9 +47,8 @@ export interface GameState {
   combo: number;
   
   // Enemy Stats
-  enemyHp: number;
-  enemyMaxHp: number;
-  enemyNextAttack: number;
+  enemies: Enemy[];
+  targetEnemyId: string | null;
   
   // Progression
   stage: number;

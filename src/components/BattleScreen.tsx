@@ -1,3 +1,4 @@
+import React from 'react';
 import { GameState, TetrominoCard } from '../types';
 import { Board } from './Board';
 import { Hand } from './Hand';
@@ -19,10 +20,11 @@ export function BattleScreen({
   onCellClick,
   onCardClick,
   onTurnEnd,
+  onTargetClick,
   clearedCells,
   flashDamage,
   damageAmount,
-}: BattleScreenProps) {
+}: BattleScreenProps & { onTargetClick: (enemyId: string) => void }) {
   return (
     <div className="battle-screen">
       {/* HUD - Player and Enemy Stats */}
@@ -30,6 +32,9 @@ export function BattleScreen({
         <div className="player-stats">
           <div className="stat-row">HP: {state.hp} / {state.maxHp}</div>
           <div className="stat-row">MP: {state.mp} / {state.maxMp}</div>
+          <div className="stat-row" style={{ fontSize: '0.8rem', marginTop: '4px', color: '#aaa' }}>
+            山札: {state.deck.length} | 捨て札: {state.discardPile.length}
+          </div>
         </div>
         
         <div className="turn-indicator">
@@ -41,11 +46,30 @@ export function BattleScreen({
           )}
         </div>
 
-        <div className={`enemy-stats ${flashDamage ? 'flash-damage' : ''}`}>
-          <div className="stat-row title">敵</div>
-          <div className="stat-row">HP: {state.enemyHp} / {state.enemyMaxHp}</div>
-          <div className="stat-row intent">予告: 攻撃 {state.enemyNextAttack}</div>
-          {flashDamage && <div className="damage-popup">-{damageAmount}</div>}
+        <div className="enemies-container" style={{ display: 'flex', gap: '12px' }}>
+          {state.enemies.map(enemy => {
+            const isTarget = state.targetEnemyId === enemy.id;
+            const isFlashing = flashDamage && isTarget;
+            return (
+              <div 
+                key={enemy.id}
+                className={`enemy-stats ${isFlashing ? 'flash-damage' : ''} ${isTarget ? 'is-target' : ''}`}
+                onClick={() => onTargetClick(enemy.id)}
+                style={{
+                  cursor: 'pointer',
+                  border: isTarget ? '2px solid #ff4040' : '2px solid transparent',
+                  padding: '4px 8px',
+                  borderRadius: '8px',
+                  background: isTarget ? 'rgba(255, 64, 64, 0.1)' : 'transparent',
+                }}
+              >
+                <div className="stat-row title">{enemy.maxHp > 70 ? 'ボス' : '敵'}</div>
+                <div className="stat-row">HP: {enemy.hp} / {enemy.maxHp}</div>
+                <div className="stat-row intent">予告: 攻撃 {enemy.nextAttack}</div>
+                {isFlashing && <div className="damage-popup">-{damageAmount}</div>}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -53,7 +77,7 @@ export function BattleScreen({
         {state.turn === 'enemy' 
           ? '敵の攻撃！'
           : selectedCard
-            ? `「${selectedCard.type}」を選択中 (Cost: ${selectedCard.cost}) — 盤面をクリックして配置 (Escでキャンセル)`
+            ? `「${selectedCard.type}」を選択中 (Cost: ${selectedCard.cost}) — Rキー/右クリックで回転 (Escでキャンセル)`
             : '手札のカードを選んでMPを消費して配置してください'}
       </div>
 

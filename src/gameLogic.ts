@@ -113,3 +113,19 @@ export function generateEnemyIntent(stage: number): number {
   const variance = Math.floor(Math.random() * (5 * stage));
   return base + variance;
 }
+
+export function rotateShape(shape: boolean[][]): boolean[][] {
+  const rows = shape.length;
+  const cols = shape[0].length;
+  const newShape: boolean[][] = Array.from({ length: cols }, () =>
+    Array.from({ length: rows }, () => false)
+  );
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      newShape[c][rows - 1 - r] = shape[r][c];
+    }
+  }
+
+  return newShape;
+}

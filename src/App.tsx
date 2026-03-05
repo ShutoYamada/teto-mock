@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { DungeonScreen } from './components/DungeonScreen';
 import { BattleScreen } from './components/BattleScreen';
 import { ResultScreen } from './components/ResultScreen';
@@ -10,9 +10,10 @@ import {
   clearLines,
   calculateDamage,
   generateEnemyIntent,
+  rotateShape,
   BOARD_SIZE,
 } from './gameLogic';
-import type { GameState, TetrominoCard } from './types';
+import type { GameState, TetrominoCard, Enemy } from './types';
 
 function initGame(): GameState {
   const deck = buildDeck();
@@ -21,6 +22,7 @@ function initGame(): GameState {
     board: createEmptyBoard(),
     deck,
     hand: [],
+    discardPile: [],
     selectedCardId: null,
     hp: 50,
     maxHp: 50,
@@ -29,9 +31,8 @@ function initGame(): GameState {
     gold: 0,
     turn: 'player',
     combo: 0,
-    enemyHp: 100,
-    enemyMaxHp: 100,
-    enemyNextAttack: 0,
+    enemies: [],
+    targetEnemyId: null,
     stage: 1,
     rewardCards: [],
     score: 0,
@@ -63,13 +64,20 @@ export default function App() {
         board: createEmptyBoard(),
         hand,
         deck,
+        discardPile: [],
         hp: prev.hp,
         mp: prev.maxMp, // Fully restore MP at battle start
         turn: 'player',
         combo: 0,
-        enemyHp: eHp,
-        enemyMaxHp: eHp,
-        enemyNextAttack: generateEnemyIntent(prev.stage),
+        enemies: [
+          {
+            id: 'enemy-1',
+            hp: eHp,
+            maxHp: eHp,
+            nextAttack: generateEnemyIntent(prev.stage),
+          }
+        ],
+        targetEnemyId: 'enemy-1',
       };
     });
   }, []);
@@ -123,11 +131,21 @@ export default function App() {
         setTimeout(() => setFlashDamage(false), 500);
       }
 
-      let newEnemyHp = state.enemyHp - damage;
-      if (newEnemyHp <= 0) newEnemyHp = 0;
+      let newEnemies = state.enemies.map((e: Enemy) => {
+        if (e.id === state.targetEnemyId) {
+          return { ...e, hp: Math.max(0, e.hp - damage) };
+        }
+        return e;
+      });
 
+      // Filter out dead enemies
+      newEnemies = newEnemies.filter((e: Enemy) => e.hp > 0);
+      
+      const targetStillAlive = newEnemies.some((e: Enemy) => e.id === state.targetEnemyId);
+      const newTargetId = targetStillAlive ? state.targetEnemyId : (newEnemies[0]?.id ?? null);
+      
       const newHand = state.hand.filter((c) => c.id !== selectedCard.id);
-      let newDeck = state.deck;
+      const newDiscardPile = [...state.discardPile, selectedCard];
       
       const newMp = state.mp - selectedCard.cost;
       const newScore = state.score + clearedCount * 100 + damage * 10;
@@ -136,7 +154,7 @@ export default function App() {
       let nextScreen = state.screen;
       let rewardCards: TetrominoCard[] = [];
       
-      if (newEnemyHp === 0) {
+      if (newEnemies.length === 0) {
         // Victory!
         nextScreen = 'result';
         rewardCards = generateRewardCards();
@@ -147,15 +165,16 @@ export default function App() {
         screen: nextScreen,
         board: newBoard,
         hand: newHand,
-        deck: newDeck,
+        discardPile: newDiscardPile,
         selectedCardId: null,
         mp: newMp,
         combo,
-        enemyHp: newEnemyHp,
+        enemies: newEnemies,
+        targetEnemyId: newTargetId,
         score: newScore,
         clearedLines: newClearedLines,
         rewardCards,
-        gold: newEnemyHp === 0 ? state.gold + state.stage * 10 : state.gold,
+        gold: newEnemies.length === 0 ? state.gold + state.stage * 10 : state.gold,
       });
     },
     [selectedCard, state]
@@ -167,31 +186,46 @@ export default function App() {
     
     setTimeout(() => {
       setState((prev) => {
-        let newHp = prev.hp - prev.enemyNextAttack;
+        const totalDamage = prev.enemies.reduce((acc: number, enemy: Enemy) => acc + enemy.nextAttack, 0);
+        let newHp = prev.hp - totalDamage;
         if (newHp <= 0) newHp = 0;
         
         if (newHp === 0) {
           return { ...prev, hp: 0, screen: 'gameover' };
         }
 
-        // Replenish Hand if empty
-        let hand = prev.hand;
-        let deck = prev.deck;
-        if (hand.length === 0) {
-          if (deck.length < 7) {
-            deck = buildDeck(); // simple reshuffle
+        // Replenish Hand (Target 5 draws)
+        let newHand = [];
+        let newDeck = [...prev.deck];
+        let newDiscardPile = [...prev.discardPile, ...prev.hand]; // Move leftovers to discard
+
+        // Draw 5 cards
+        for (let i = 0; i < 5; i++) {
+          if (newDeck.length === 0) {
+            // Shuffle discard pile into deck
+            newDeck = [...newDiscardPile].sort(() => Math.random() - 0.5);
+            newDiscardPile = [];
           }
-          hand = deck.splice(0, 7);
+          if (newDeck.length > 0) {
+            newHand.push(newDeck.shift()!);
+          }
         }
+
+        // Update enemy intents
+        const newEnemies = prev.enemies.map((e: Enemy) => ({
+          ...e,
+          nextAttack: generateEnemyIntent(prev.stage)
+        }));
 
         return {
           ...prev,
           hp: newHp,
           mp: prev.maxMp, // Restore MP at start of player turn
           turn: 'player',
-          enemyNextAttack: generateEnemyIntent(prev.stage),
-          hand,
-          deck,
+          enemies: newEnemies,
+          hand: newHand,
+          deck: newDeck,
+          discardPile: newDiscardPile,
           combo: 0 // Reset combo on turn end
         };
       });
@@ -213,15 +247,53 @@ export default function App() {
     setState(initGame());
   }, []);
 
-  // Deselect on Escape
+  // Deselect on Escape, Rotate on R or Up Arrow
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setState((prev) => ({ ...prev, selectedCardId: null }));
+      } else if (e.key === 'r' || e.key === 'R' || e.key === 'ArrowUp') {
+        setState((prev) => {
+          if (!prev.selectedCardId) return prev;
+          const cardIndex = prev.hand.findIndex((c) => c.id === prev.selectedCardId);
+          if (cardIndex === -1) return prev;
+          
+          const newHand = [...prev.hand];
+          const oldCard = newHand[cardIndex];
+          newHand[cardIndex] = {
+            ...oldCard,
+            shape: rotateShape(oldCard.shape),
+          };
+          
+          return { ...prev, hand: newHand };
+        });
       }
     };
+    
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault(); // Prevent standard right-click menu
+      setState((prev) => {
+        if (!prev.selectedCardId) return prev;
+        const cardIndex = prev.hand.findIndex((c) => c.id === prev.selectedCardId);
+        if (cardIndex === -1) return prev;
+        
+        const newHand = [...prev.hand];
+        const oldCard = newHand[cardIndex];
+        newHand[cardIndex] = {
+          ...oldCard,
+          shape: rotateShape(oldCard.shape),
+        };
+        
+        return { ...prev, hand: newHand };
+      });
+    };
+    
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('contextmenu', onContextMenu);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('contextmenu', onContextMenu);
+    };
   }, []);
 
   return (
@@ -265,6 +337,7 @@ export default function App() {
           onCellClick={handleCellClick}
           onCardClick={handleCardClick}
           onTurnEnd={handleTurnEnd}
+          onTargetClick={(id) => setState(prev => ({ ...prev, targetEnemyId: id }))}
           clearedCells={clearedCells}
           flashDamage={flashDamage}
           damageAmount={recentDamage}
