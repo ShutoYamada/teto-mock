@@ -86,3 +86,30 @@ export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
   }
   return true;
 }
+
+export function calculateDamage(
+  card: TetrominoCard | null,
+  clearedCount: number,
+  combo: number
+): number {
+  let damage = 0;
+  if (card) {
+    damage += card.attack;
+  }
+  if (clearedCount > 0) {
+    // Base line clear damage
+    damage += clearedCount * 10;
+    // Combo multiplier
+    if (combo > 0) {
+      damage += combo * 5;
+    }
+  }
+  return damage;
+}
+
+export function generateEnemyIntent(stage: number): number {
+  // Simple formula: Stage 1 = 5-10, Stage 2 = 10-20, etc.
+  const base = 5 * stage;
+  const variance = Math.floor(Math.random() * (5 * stage));
+  return base + variance;
+}

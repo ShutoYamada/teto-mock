@@ -459,3 +459,210 @@ body {
   font-size: 1.3rem;
   font-weight: 700;
 }
+
+/* ── Dungeon Screen ───────────────────────────────────────── */
+.dungeon-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.dungeon-title {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dungeon-map {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-panel);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.dungeon-node {
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dungeon-node.selectable {
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(200, 85, 255, 0.3), rgba(0, 217, 255, 0.3));
+  border: 1px solid rgba(200, 85, 255, 0.6);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dungeon-node.selectable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(200, 85, 255, 0.4);
+}
+
+.dungeon-branch {
+  width: 2px;
+  height: 24px;
+  background: var(--border-bright);
+}
+
+.dungeon-status {
+  text-align: center;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+
+/* ── Battle HUD ───────────────────────────────────────────── */
+.battle-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.battle-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 640px;
+  background: var(--bg-panel);
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.stat-row {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.player-stats, .enemy-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+
+.enemy-stats.flash-damage {
+  animation: hurt-shake 0.4s ease;
+}
+
+.enemy-stats .title {
+  color: #ff4040;
+}
+
+.intent {
+  color: #ff8c00;
+  font-size: 0.9rem;
+}
+
+.turn-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.turn-label {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.turn-end-btn {
+  background: transparent;
+  border: 1px solid #ff4040;
+  color: #ff4040;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.turn-end-btn:hover {
+  background: rgba(255, 64, 64, 0.2);
+}
+
+.damage-popup {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 10px #ff4040;
+  animation: float-up 0.8s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes hurt-shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes float-up {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(1.5); }
+}
+
+/* ── Result Screen ────────────────────────────────────────── */
+.result-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.result-title {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, #00d9ff, #c855ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.result-gold {
+  font-size: 1.5rem;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.result-subtitle {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.reward-cards {
+  display: flex;
+  gap: 24px;
+}
+
+.reward-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.reward-card-stats {
+  font-size: 0.8rem;
+  color: #aaa;
+  font-family: monospace;
+}

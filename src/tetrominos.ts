@@ -4,6 +4,8 @@ interface TetrominoDefinition {
   shape: boolean[][];
   color: string;
   glowColor: string;
+  cost: number;
+  attack: number;
 }
 
 export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
@@ -13,6 +15,8 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     ],
     color: '#00D9FF',
     glowColor: 'rgba(0, 217, 255, 0.5)',
+    cost: 1,
+    attack: 4,
   },
   O: {
     shape: [
@@ -21,14 +25,18 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     ],
     color: '#FFE000',
     glowColor: 'rgba(255, 224, 0, 0.5)',
+    cost: 1,
+    attack: 4,
   },
   T: {
     shape: [
       [false, true, false],
-      [true,  true, true],
+      [true,  true, true]
     ],
     color: '#C855FF',
     glowColor: 'rgba(200, 85, 255, 0.5)',
+    cost: 1,
+    attack: 4,
   },
   S: {
     shape: [
@@ -37,6 +45,8 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     ],
     color: '#00FF7F',
     glowColor: 'rgba(0, 255, 127, 0.5)',
+    cost: 1,
+    attack: 4,
   },
   Z: {
     shape: [
@@ -45,6 +55,8 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     ],
     color: '#FF4040',
     glowColor: 'rgba(255, 64, 64, 0.5)',
+    cost: 1,
+    attack: 4,
   },
   J: {
     shape: [
@@ -53,6 +65,8 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     ],
     color: '#4080FF',
     glowColor: 'rgba(64, 128, 255, 0.5)',
+    cost: 1,
+    attack: 4,
   },
   L: {
     shape: [
@@ -61,6 +75,8 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     ],
     color: '#FF8C00',
     glowColor: 'rgba(255, 140, 0, 0.5)',
+    cost: 1,
+    attack: 4,
   },
 };
 
@@ -82,6 +98,8 @@ export function buildDeck(): TetrominoCard[] {
         shape: def.shape,
         color: def.color,
         glowColor: def.glowColor,
+        cost: def.cost,
+        attack: def.attack,
       });
     }
   }
@@ -95,4 +113,25 @@ export function shuffle<T>(array: T[]): T[] {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+export function generateRewardCards(): TetrominoCard[] {
+  const types: TetrominoType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+  const rewards: TetrominoCard[] = [];
+  
+  // Pick 3 random cards for drafting
+  for (let i = 0; i < 3; i++) {
+    const type = types[Math.floor(Math.random() * types.length)];
+    const def = TETROMINO_DEFS[type];
+    rewards.push({
+      id: uid(),
+      type,
+      shape: def.shape,
+      color: def.color,
+      glowColor: def.glowColor,
+      cost: def.cost,
+      attack: def.attack,
+    });
+  }
+  return rewards;
 }
