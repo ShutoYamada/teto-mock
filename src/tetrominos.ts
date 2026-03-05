@@ -1,14 +1,101 @@
-import type { TetrominoCard, TetrominoType } from './types';
+import type { TetrominoCard, TetrominoType, BlockType, DefaultTetrominoType, CustomTetrominoType } from './types';
 
 interface TetrominoDefinition {
   shape: boolean[][];
+  blockTypes?: BlockType[][];
   color: string;
   glowColor: string;
   cost: number;
   attack: number;
+  effectText?: string;
+  rarity: 'default' | 'common' | 'uncommon' | 'rare' | 'legendary';
+}
+export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinition> = {
+  Sword: {
+    shape: [
+      [true, true, true, true],
+    ],
+    blockTypes: [
+      ['sword', 'sword', 'sword', 'sword']
+    ],
+    color: '#FF4040',
+    glowColor: 'rgba(255, 64, 64, 0.5)',
+    cost: 1,
+    attack: 2,
+    effectText: "全マス剣ブロック(配置中、全基礎ダメ+1)",
+    rarity: "uncommon",
+  },
+  Cross: { // Cross
+    shape: [
+      [false, true, false],
+      [true,  true, true],
+      [false, true, false],
+    ],
+    blockTypes: [
+      ['normal', 'normal', 'normal'],
+      ['normal', 'bomb',   'normal'],
+      ['normal', 'normal', 'normal'],
+    ],
+    color: '#FF0055',
+    glowColor: 'rgba(255, 0, 85, 0.5)',
+    cost: 1,
+    attack: 4,
+    effectText: "中心が爆弾ブロック(周囲破壊&全体10ダメ)",
+    rarity: "rare",
+  },
+  SquareBomb: {
+    shape: [
+      [true, true, true],
+      [true, true, true],
+      [true, true, true],
+    ],
+    blockTypes: [
+      ['bomb', 'bomb', 'bomb'],
+      ['bomb', 'bomb', 'bomb'],
+      ['bomb', 'bomb', 'bomb'],
+    ],
+    color: '#FF4500',
+    glowColor: 'rgba(255, 69, 0, 0.5)',
+    cost: 4,
+    attack: 3,
+    effectText: "全マス爆弾ブロック",
+    rarity: "legendary",
+  },
+    Mana: {
+    shape: [
+      [false, true, false],
+      [true,  true, true]
+    ],
+    blockTypes: [
+      ['normal', 'mana', 'normal'],
+      ['normal', 'normal', 'normal']
+    ],
+    color: '#00FF7F',
+    glowColor: 'rgba(0, 255, 127, 0.5)',
+    cost: 2,
+    attack: 0,
+    effectText: "中心がマナブロック(消滅時MP+1)",
+    rarity: "uncommon",
+  },
+    Shield: {
+    shape: [
+      [true, true],
+      [true, true],
+    ],
+    blockTypes: [
+      ['shield', 'shield'],
+      ['shield', 'shield']
+    ],
+    color: '#00D9FF',
+    glowColor: 'rgba(0, 217, 255, 0.5)',
+    cost: 1,
+    attack: 0,
+    effectText: "全マス盾ブロック(被ダメ-1)",
+    rarity: "uncommon",
+  },
 }
 
-export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
+export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
   I: {
     shape: [
       [true, true, true, true],
@@ -17,6 +104,7 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     glowColor: 'rgba(0, 217, 255, 0.5)',
     cost: 1,
     attack: 4,
+    rarity: "default",
   },
   O: {
     shape: [
@@ -27,6 +115,7 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     glowColor: 'rgba(255, 224, 0, 0.5)',
     cost: 1,
     attack: 4,
+    rarity: "default",
   },
   T: {
     shape: [
@@ -37,6 +126,7 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     glowColor: 'rgba(200, 85, 255, 0.5)',
     cost: 1,
     attack: 4,
+    rarity: "default",
   },
   S: {
     shape: [
@@ -47,6 +137,7 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     glowColor: 'rgba(0, 255, 127, 0.5)',
     cost: 1,
     attack: 4,
+    rarity: "default",
   },
   Z: {
     shape: [
@@ -57,6 +148,7 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     glowColor: 'rgba(255, 64, 64, 0.5)',
     cost: 1,
     attack: 4,
+    rarity: "default",
   },
   J: {
     shape: [
@@ -67,6 +159,7 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     glowColor: 'rgba(64, 128, 255, 0.5)',
     cost: 1,
     attack: 4,
+    rarity: "default",
   },
   L: {
     shape: [
@@ -77,7 +170,13 @@ export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
     glowColor: 'rgba(255, 140, 0, 0.5)',
     cost: 1,
     attack: 4,
+    rarity: "default",
   },
+};
+
+export const TETROMINO_DEFS: Record<TetrominoType, TetrominoDefinition> = {
+  ...DEFAULT_TETROMINO_DEFS,
+  ...CUSTOM_TETROMINO_DEFS,
 };
 
 let _uidCounter = 0;
@@ -96,10 +195,13 @@ export function buildDeck(): TetrominoCard[] {
         id: uid(),
         type,
         shape: def.shape,
+        blockTypes: def.blockTypes,
         color: def.color,
         glowColor: def.glowColor,
         cost: def.cost,
         attack: def.attack,
+        effectText: def.effectText,
+        rarity: def.rarity,
       });
     }
   }
@@ -116,7 +218,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(): TetrominoCard[] {
-  const types: TetrominoType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield'];
   const rewards: TetrominoCard[] = [];
   
   // Pick 3 random cards for drafting
@@ -127,10 +229,13 @@ export function generateRewardCards(): TetrominoCard[] {
       id: uid(),
       type,
       shape: def.shape,
+      blockTypes: def.blockTypes,
       color: def.color,
       glowColor: def.glowColor,
       cost: def.cost,
       attack: def.attack,
+      effectText: def.effectText,
+      rarity: def.rarity,
     });
   }
   return rewards;

@@ -44,20 +44,33 @@ export function TetrominoCard({ card, isSelected, onClick }: TetrominoCardProps)
         }}
       >
         {card.shape.map((row, r) =>
-          row.map((filled, c) => (
-            <div
-              key={`${r}-${c}`}
-              className="preview-cell"
-              style={
-                filled
-                  ? {
-                      backgroundColor: card.color,
-                      boxShadow: `0 0 6px ${card.glowColor}`,
-                    }
-                  : { backgroundColor: 'transparent' }
-              }
-            />
-          ))
+          row.map((filled, c) => {
+            const bType = card.blockTypes ? card.blockTypes[r][c] : 'normal';
+            const icon = bType === 'bomb' ? '💣' :
+                         bType === 'sword' ? '🗡️' :
+                         bType === 'shield' ? '🛡️' :
+                         bType === 'mana' ? '💧' : null;
+            return (
+              <div
+                key={`${r}-${c}`}
+                className="preview-cell"
+                style={
+                  filled
+                    ? {
+                        backgroundColor: card.color,
+                        boxShadow: `0 0 6px ${card.glowColor}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9px',
+                      }
+                    : { backgroundColor: 'transparent' }
+                }
+              >
+                 {filled && icon}
+              </div>
+            );
+          })
         )}
       </div>
     </button>

@@ -66,8 +66,29 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
             const isPreview = previewCells.has(key);
             const isInvalid = invalidCells.has(key);
             const isCleared = clearedCells.has(key);
-            const color = cell ? TETROMINO_DEFS[cell].color : null;
-            const glow = cell ? TETROMINO_DEFS[cell].glowColor : null;
+            
+            const cellType = cell ? cell.type : null;
+            const blockType = cell ? cell.blockType : null;
+            const color = cellType ? TETROMINO_DEFS[cellType].color : null;
+            const glow = cellType ? TETROMINO_DEFS[cellType].glowColor : null;
+            
+            let previewBlockIcon: string | null = null;
+            if (isPreview && selectedCard && hoverCell) {
+               const rr = r - hoverCell.row;
+               const rc = c - hoverCell.col;
+               if (rr >= 0 && rr < selectedCard.shape.length && rc >= 0 && rc < selectedCard.shape[rr].length) {
+                  const bType = selectedCard.blockTypes ? selectedCard.blockTypes[rr][rc] : 'normal';
+                  previewBlockIcon = bType === 'bomb' ? '💣' :
+                                     bType === 'sword' ? '🗡️' :
+                                     bType === 'shield' ? '🛡️' :
+                                     bType === 'mana' ? '💧' : null;
+               }
+            }
+            
+            const blockIcon = blockType === 'bomb' ? '💣' :
+                              blockType === 'sword' ? '🗡️' :
+                              blockType === 'shield' ? '🛡️' :
+                              blockType === 'mana' ? '💧' : previewBlockIcon;
 
             let cellClass = 'board-cell';
             if (isPreview) cellClass += ' board-cell--preview';
@@ -80,22 +101,32 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                 key={key}
                 className={cellClass}
                 style={
-                  cell && !isCleared
+                  cellType && !isCleared
                     ? {
                         backgroundColor: color!,
                         boxShadow: `inset 0 0 8px rgba(255,255,255,0.3), 0 0 12px ${glow}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.2rem',
                       }
                     : isPreview && selectedCard
                     ? {
                         backgroundColor: selectedCard.color + '88',
                         boxShadow: `0 0 10px ${selectedCard.glowColor}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.2rem',
                       }
                     : undefined
                 }
                 onClick={() => onCellClick(r, c)}
                 onMouseEnter={() => setHoverCell({ row: r, col: c })}
                 onMouseLeave={() => setHoverCell(null)}
-              />
+              >
+                  {blockIcon}
+              </div>
             );
           })
         )}

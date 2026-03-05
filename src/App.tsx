@@ -12,6 +12,7 @@ import {
   generateEnemyIntent,
   generateDungeonMap,
   rotateShape,
+  rotateBlockTypes,
   BOARD_SIZE,
 } from './gameLogic';
 import type { GameState, TetrominoCard, Enemy } from './types';
@@ -30,6 +31,7 @@ function initGame(): GameState {
     mp: 5,
     maxMp: 5,
     gold: 0,
+    shield: 0,
     turn: 'player',
     combo: 0,
     enemies: [],
@@ -50,7 +52,7 @@ export default function App() {
   const [recentDamage, setRecentDamage] = useState(0);
 
   const selectedCard: TetrominoCard | null =
-    state.hand.find((c) => c.id === state.selectedCardId) ?? null;
+    state.hand.find((c: TetrominoCard) => c.id === state.selectedCardId) ?? null;
 
   const startBattle = useCallback((nodeId: string) => {
     setState((prev) => {
@@ -75,6 +77,7 @@ export default function App() {
         discardPile: [],
         hp: prev.hp,
         mp: prev.maxMp, // Fully restore MP at battle start
+        shield: 0,
         turn: 'player',
         combo: 0,
         currentNodeId: nodeId,
@@ -95,7 +98,7 @@ export default function App() {
   const handleCardClick = useCallback((id: string) => {
     setState((prev) => {
       // Can only select if we have enough MP
-      const card = prev.hand.find(c => c.id === id);
+      const card = prev.hand.find((c: TetrominoCard) => c.id === id);
       if (card && prev.mp < card.cost) {
         return prev; // Not enough MP
       }
@@ -114,7 +117,7 @@ export default function App() {
 
       const boardAfterPlace = placeCard(state.board, selectedCard, row, col);
 
-      const { newBoard, clearedCount } = clearLines(boardAfterPlace);
+      const { newBoard, clearedCount, bombCount, manaCount } = clearLines(boardAfterPlace);
       
       let combo = state.combo;
       if (clearedCount > 0) {
@@ -133,19 +136,36 @@ export default function App() {
         combo = 0; 
       }
 
-      const damage = calculateDamage(selectedCard, clearedCount, combo);
+      const damage = calculateDamage(boardAfterPlace, selectedCard, clearedCount, combo);
       
-      if (damage > 0) {
-        setRecentDamage(damage);
+      // Calculate Shield granted by this card
+      let addedShields = 0;
+      if (selectedCard.blockTypes) {
+         for (let r = 0; r < selectedCard.blockTypes.length; r++) {
+            for (let c = 0; c < selectedCard.blockTypes[r].length; c++) {
+               if (selectedCard.blockTypes[r][c] === 'shield' && selectedCard.shape[r][c]) {
+                   addedShields++;
+               }
+            }
+         }
+      }
+      
+      const newShield = state.shield + addedShields;
+      
+      // Flash combo hit (only for targeted damage or bomb damage)
+      const totalTargetDamage = damage + bombCount * 10;
+      if (totalTargetDamage > 0) {
+        setRecentDamage(totalTargetDamage);
         setFlashDamage(true);
         setTimeout(() => setFlashDamage(false), 500);
       }
 
       let newEnemies = state.enemies.map((e: Enemy) => {
+        let enemyDamage = bombCount * 10;
         if (e.id === state.targetEnemyId) {
-          return { ...e, hp: Math.max(0, e.hp - damage) };
+           enemyDamage += damage;
         }
-        return e;
+        return { ...e, hp: Math.max(0, e.hp - enemyDamage) };
       });
 
       // Filter out dead enemies
@@ -154,11 +174,13 @@ export default function App() {
       const targetStillAlive = newEnemies.some((e: Enemy) => e.id === state.targetEnemyId);
       const newTargetId = targetStillAlive ? state.targetEnemyId : (newEnemies[0]?.id ?? null);
       
-      const newHand = state.hand.filter((c) => c.id !== selectedCard.id);
+      const newHand = state.hand.filter((c: TetrominoCard) => c.id !== selectedCard.id);
       const newDiscardPile = [...state.discardPile, selectedCard];
       
-      const newMp = state.mp - selectedCard.cost;
-      const newScore = state.score + clearedCount * 100 + damage * 10;
+      let newMp = state.mp - selectedCard.cost + manaCount;
+      if (newMp > state.maxMp) newMp = state.maxMp;
+      
+      const newScore = state.score + clearedCount * 100 + damage * 10 + bombCount * 100;
       const newClearedLines = state.clearedLines + clearedCount;
       
       let nextScreen = state.screen;
@@ -178,6 +200,7 @@ export default function App() {
         discardPile: newDiscardPile,
         selectedCardId: null,
         mp: newMp,
+        shield: newShield,
         combo,
         enemies: newEnemies,
         targetEnemyId: newTargetId,
@@ -197,7 +220,11 @@ export default function App() {
     setTimeout(() => {
       setState((prev) => {
         const totalDamage = prev.enemies.reduce((acc: number, enemy: Enemy) => acc + enemy.nextAttack, 0);
-        let newHp = prev.hp - totalDamage;
+        
+        let actualDamage = totalDamage - prev.shield;
+        if (actualDamage < 0) actualDamage = 0;
+        
+        let newHp = prev.hp - actualDamage;
         if (newHp <= 0) newHp = 0;
         
         if (newHp === 0) {
@@ -231,6 +258,7 @@ export default function App() {
           ...prev,
           hp: newHp,
           mp: prev.maxMp, // Restore MP at start of player turn
+          shield: 0, // Armor disappears at start of your turn
           turn: 'player',
           enemies: newEnemies,
           hand: newHand,
@@ -277,7 +305,7 @@ export default function App() {
       } else if (e.key === 'r' || e.key === 'R' || e.key === 'ArrowUp') {
         setState((prev) => {
           if (!prev.selectedCardId) return prev;
-          const cardIndex = prev.hand.findIndex((c) => c.id === prev.selectedCardId);
+          const cardIndex = prev.hand.findIndex((c: TetrominoCard) => c.id === prev.selectedCardId);
           if (cardIndex === -1) return prev;
           
           const newHand = [...prev.hand];
@@ -285,6 +313,7 @@ export default function App() {
           newHand[cardIndex] = {
             ...oldCard,
             shape: rotateShape(oldCard.shape),
+            blockTypes: oldCard.blockTypes ? rotateBlockTypes(oldCard.blockTypes) : undefined,
           };
           
           return { ...prev, hand: newHand };
@@ -296,7 +325,7 @@ export default function App() {
       e.preventDefault(); // Prevent standard right-click menu
       setState((prev) => {
         if (!prev.selectedCardId) return prev;
-        const cardIndex = prev.hand.findIndex((c) => c.id === prev.selectedCardId);
+        const cardIndex = prev.hand.findIndex((c: TetrominoCard) => c.id === prev.selectedCardId);
         if (cardIndex === -1) return prev;
         
         const newHand = [...prev.hand];
@@ -304,6 +333,7 @@ export default function App() {
         newHand[cardIndex] = {
           ...oldCard,
           shape: rotateShape(oldCard.shape),
+          blockTypes: oldCard.blockTypes ? rotateBlockTypes(oldCard.blockTypes) : undefined,
         };
         
         return { ...prev, hand: newHand };

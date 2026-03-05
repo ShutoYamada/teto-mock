@@ -1,4 +1,4 @@
-import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType } from './types';
+import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType } from './types';
 
 export const BOARD_SIZE = 7;
 
@@ -36,7 +36,13 @@ export function placeCard(
   for (let r = 0; r < card.shape.length; r++) {
     for (let c = 0; c < card.shape[r].length; c++) {
       if (!card.shape[r][c]) continue;
-      newBoard[startRow + r][startCol + c] = card.type;
+      
+      const blockType = card.blockTypes ? card.blockTypes[r][c] : 'normal';
+      
+      newBoard[startRow + r][startCol + c] = {
+        type: card.type,
+        blockType
+      };
     }
   }
   return newBoard;
@@ -45,6 +51,8 @@ export function placeCard(
 export interface ClearResult {
   newBoard: BoardState;
   clearedCount: number;
+  bombCount: number;
+  manaCount: number;
 }
 
 export function clearLines(board: BoardState): ClearResult {
@@ -61,17 +69,80 @@ export function clearLines(board: BoardState): ClearResult {
   }
 
   const clearedCount = fullRows.size + fullCols.size;
-  if (clearedCount === 0) return { newBoard: board, clearedCount: 0 };
+  if (clearedCount === 0) {
+    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0 };
+  }
 
-  // Clear cells that belong to full rows or columns
+  const cellsToClear = new Set<string>();
+  
+  // Tag line clear cells
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+       if (fullRows.has(r) || fullCols.has(c)) {
+         cellsToClear.add(`${r},${c}`);
+       }
+    }
+  }
+  
+  // Resolve Cascading Bombs
+  let bombCount = 0;
+  let manaCount = 0;
+  
+  let newlyAddedBombs = true;
+  while (newlyAddedBombs) {
+    newlyAddedBombs = false;
+    
+    // We have to iterate a snapshot since we are modifying the set
+    const currentCells = Array.from(cellsToClear);
+    for (const pos of currentCells) {
+      const [r, c] = pos.split(',').map(Number);
+      const cellData = board[r][c];
+      
+      if (cellData && cellData.blockType === 'mana') {
+        manaCount++; // This is safe to recalculate if we keep track of already counted manas, let's keep it simple by marking handled.
+      }
+      
+      if (cellData && cellData.blockType === 'bomb') {
+        // Tag surrounding 8 cells
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+              const neighborStr = `${nr},${nc}`;
+              if (!cellsToClear.has(neighborStr)) {
+                 cellsToClear.add(neighborStr);
+                 newlyAddedBombs = true; // Loop again just in case this new cell is ALSO a bomb
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Recalculate full totals after cascades
+  bombCount = 0;
+  manaCount = 0;
+  cellsToClear.forEach((pos) => {
+    const [r, c] = pos.split(',').map(Number);
+    const cellData = board[r][c];
+    if (cellData) {
+      if (cellData.blockType === 'bomb') bombCount++;
+      if (cellData.blockType === 'mana') manaCount++;
+    }
+  });
+
+  // Execute Clearing
   const newBoard = board.map((row, r) =>
     row.map((cell, c) => {
-      if (fullRows.has(r) || fullCols.has(c)) return null;
+      if (cellsToClear.has(`${r},${c}`)) return null;
       return cell;
     })
   );
 
-  return { newBoard, clearedCount };
+  return { newBoard, clearedCount, bombCount, manaCount };
 }
 
 export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
@@ -88,6 +159,7 @@ export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
 }
 
 export function calculateDamage(
+  board: BoardState,
   card: TetrominoCard | null,
   clearedCount: number,
   combo: number
@@ -95,6 +167,17 @@ export function calculateDamage(
   let damage = 0;
   if (card) {
     damage += card.attack;
+    
+    // Check for Sword Buffs on the board
+    let swordBuff = 0;
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (board[r][c]?.blockType === 'sword') {
+           swordBuff += 1;
+        }
+      }
+    }
+    damage += swordBuff;
   }
   if (clearedCount > 0) {
     // Base line clear damage
@@ -128,6 +211,23 @@ export function rotateShape(shape: boolean[][]): boolean[][] {
   }
 
   return newShape;
+}
+
+export function rotateBlockTypes(blockTypes: BlockType[][] | undefined): BlockType[][] | undefined {
+  if (!blockTypes) return undefined;
+  const rows = blockTypes.length;
+  const cols = blockTypes[0].length;
+  const newBlockTypes: BlockType[][] = Array.from({ length: cols }, () =>
+    Array.from({ length: rows }, () => 'normal' as BlockType)
+  );
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      newBlockTypes[c][rows - 1 - r] = blockTypes[r][c];
+    }
+  }
+
+  return newBlockTypes;
 }
 
 export function generateDungeonMap(): DungeonNode[] {

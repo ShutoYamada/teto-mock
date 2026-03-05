@@ -32,6 +32,11 @@ export function BattleScreen({
         <div className="player-stats">
           <div className="stat-row">HP: {state.hp} / {state.maxHp}</div>
           <div className="stat-row">MP: {state.mp} / {state.maxMp}</div>
+          {state.shield > 0 && (
+             <div className="stat-row" style={{ color: '#FFE000', fontWeight: 'bold' }}>
+               🛡️ シールド: {state.shield}
+             </div>
+          )}
           <div className="stat-row" style={{ fontSize: '0.8rem', marginTop: '4px', color: '#aaa' }}>
             山札: {state.deck.length} | 捨て札: {state.discardPile.length}
           </div>
