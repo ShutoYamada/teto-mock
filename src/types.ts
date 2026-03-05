@@ -8,6 +8,7 @@ export interface TetrominoCard {
   glowColor: string;
   cost: number;
   attack: number;
+  effectText?: string;
 }
 
 // Each cell is null (empty) or a tetromino type
@@ -23,6 +24,15 @@ export interface Enemy {
   hp: number;
   maxHp: number;
   nextAttack: number;
+}
+
+export type DungeonNodeType = 'battle' | 'boss' | 'event' | 'elite' | 'rest';
+
+export interface DungeonNode {
+  id: string;
+  depth: number;
+  type: DungeonNodeType;
+  nextNodes: string[]; // IDs of nodes this node connects to
 }
 
 export interface GameState {
@@ -50,8 +60,10 @@ export interface GameState {
   enemies: Enemy[];
   targetEnemyId: string | null;
   
-  // Progression
+  // Progression & Map
   stage: number;
+  dungeonMap: DungeonNode[];
+  currentNodeId: string | null; // null means at the start (depth 0), ready to pick a depth 1 node
   
   // Result state
   rewardCards: TetrominoCard[];

@@ -346,6 +346,60 @@ body {
   pointer-events: none;
 }
 
+/* Card Stats (Attack & Cost) */
+.card-stat-attack,
+.card-stat-cost {
+  position: absolute;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.card-stat-attack {
+  left: 4px;
+  background: linear-gradient(135deg, #ff4040, #cc0000);
+}
+
+.card-stat-cost {
+  right: 4px;
+  background: linear-gradient(135deg, #00d9ff, #0077cc);
+}
+
+/* Card Tooltip */
+.card-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.tetromino-card:hover .card-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
 .tetromino-card:hover {
   transform: translateY(-6px) scale(1.04);
   background: var(--bg-panel-hover);
@@ -466,8 +520,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 32px;
+  width: 100%;
+  max-width: 640px;
+  gap: 16px;
+  padding-bottom: 24px;
 }
 
 .dungeon-title {
@@ -477,48 +533,126 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-.dungeon-map {
+.dungeon-map-container {
+  flex: 1;
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 32px 16px;
+  /* Custom scrollbar styling for better look */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 85, 255, 0.4) transparent;
+}
+
+.dungeon-map-container::-webkit-scrollbar {
+  width: 6px;
+}
+.dungeon-map-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dungeon-map-container::-webkit-scrollbar-thumb {
+  background-color: rgba(200, 85, 255, 0.4);
+  border-radius: 10px;
+}
+
+.dungeon-map-visual {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  background: var(--bg-panel);
-  padding: 32px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  gap: 40px;
+  padding-bottom: 20px;
+}
+
+.dungeon-depth-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.depth-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.depth-nodes {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  width: 100%;
+}
+
+.node-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .dungeon-node {
-  padding: 12px 24px;
+  padding: 12px 16px;
   border-radius: var(--radius);
   font-weight: bold;
+  font-size: 0.95rem;
   letter-spacing: 0.05em;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  min-width: 100px;
 }
 
 .dungeon-node.selectable {
   cursor: pointer;
   background: linear-gradient(135deg, rgba(200, 85, 255, 0.3), rgba(0, 217, 255, 0.3));
-  border: 1px solid rgba(200, 85, 255, 0.6);
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid rgba(200, 85, 255, 0.8);
+  color: var(--text-primary);
+  box-shadow: 0 0 16px rgba(200, 85, 255, 0.4);
 }
 
 .dungeon-node.selectable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(200, 85, 255, 0.4);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(200, 85, 255, 0.6);
+  background: linear-gradient(135deg, rgba(200, 85, 255, 0.4), rgba(0, 217, 255, 0.4));
 }
 
-.dungeon-branch {
-  width: 2px;
-  height: 24px;
-  background: var(--border-bright);
+.dungeon-node.cleared {
+  background: rgba(100, 255, 100, 0.1);
+  border-color: rgba(100, 255, 100, 0.3);
+  color: rgba(100, 255, 100, 0.8);
+  opacity: 0.7;
+}
+
+.dungeon-node.current {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: rgba(255, 215, 0, 0.8);
+  color: #FFD700;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.4);
+  opacity: 1;
+}
+
+.dungeon-node.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .dungeon-status {
-  text-align: center;
-  font-size: 1.2rem;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 1.1rem;
+  font-weight: bold;
   color: var(--text-primary);
+  background: var(--bg-panel);
+  padding: 12px 32px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
 }
 
 /* ── Battle HUD ───────────────────────────────────────────── */

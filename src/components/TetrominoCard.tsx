@@ -1,3 +1,4 @@
+import React from 'react';
 import type { TetrominoCard as TetrominoCardType } from '../types';
 
 interface TetrominoCardProps {
@@ -23,6 +24,13 @@ export function TetrominoCard({ card, isSelected, onClick }: TetrominoCardProps)
       }
       title={`テトリミノ ${card.type}`}
     >
+      <div className="card-stat-attack" title="基礎攻撃力">{card.attack}</div>
+      <div className="card-stat-cost" title="コスト">{card.cost}</div>
+      
+      <div className="card-tooltip">
+        {card.effectText ? card.effectText : `基礎攻撃力：${card.attack}`}
+      </div>
+
       <div className="card-type-label" style={{ color: card.color }}>
         {card.type}
       </div>

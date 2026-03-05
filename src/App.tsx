@@ -10,6 +10,7 @@ import {
   clearLines,
   calculateDamage,
   generateEnemyIntent,
+  generateDungeonMap,
   rotateShape,
   BOARD_SIZE,
 } from './gameLogic';
@@ -34,6 +35,8 @@ function initGame(): GameState {
     enemies: [],
     targetEnemyId: null,
     stage: 1,
+    dungeonMap: generateDungeonMap(),
+    currentNodeId: null,
     rewardCards: [],
     score: 0,
     clearedLines: 0,
@@ -49,14 +52,19 @@ export default function App() {
   const selectedCard: TetrominoCard | null =
     state.hand.find((c) => c.id === state.selectedCardId) ?? null;
 
-  const startBattle = useCallback(() => {
+  const startBattle = useCallback((nodeId: string) => {
     setState((prev) => {
       // Draw initial hand
       let deck = [...prev.deck];
       if (deck.length < 7) deck = buildDeck();
       
       const hand = deck.splice(0, 7);
-      const eHp = 40 + prev.stage * 20;
+      
+      // Calculate depth from the node ID structure 'node-{depth}-{index}'
+      const nodeParts = nodeId.split('-');
+      const depth = parseInt(nodeParts[1], 10);
+      
+      const eHp = 40 + depth * 20;
 
       return {
         ...prev,
@@ -69,15 +77,17 @@ export default function App() {
         mp: prev.maxMp, // Fully restore MP at battle start
         turn: 'player',
         combo: 0,
+        currentNodeId: nodeId,
+        stage: depth + 1,
         enemies: [
           {
-            id: 'enemy-1',
+            id: `enemy-${nodeId}`,
             hp: eHp,
             maxHp: eHp,
-            nextAttack: generateEnemyIntent(prev.stage),
+            nextAttack: generateEnemyIntent(depth + 1),
           }
         ],
-        targetEnemyId: 'enemy-1',
+        targetEnemyId: `enemy-${nodeId}`,
       };
     });
   }, []);
@@ -233,13 +243,25 @@ export default function App() {
   }, []);
 
   const handleRewardSelect = useCallback((card: TetrominoCard) => {
-    setState((prev) => ({
-      ...prev,
-      deck: [...prev.deck, card],
-      screen: 'dungeon',
-      stage: prev.stage + 1, // Advance to next node (simplified for mock)
-      rewardCards: [],
-    }));
+    setState((prev) => {
+      const isBoss = prev.currentNodeId?.split('-')[1] === '14'; // depth 14 is boss
+      
+      if (isBoss) {
+        // You beat the 15th node!
+        return {
+           ...prev,
+           deck: [...prev.deck, card],
+           screen: 'gameover',
+           rewardCards: [],
+        };
+      }
+      return {
+        ...prev,
+        deck: [...prev.deck, card],
+        screen: 'dungeon',
+        rewardCards: [],
+      };
+    });
   }, []);
 
   const handleNewGame = useCallback(() => {
@@ -316,8 +338,10 @@ export default function App() {
       {state.screen === 'gameover' && (
         <div className="gameover-overlay">
           <div className="gameover-panel">
-            <h2 className="gameover-title">ゲームオーバー</h2>
-            <p className="gameover-score">到達ステージ: <strong>{state.stage}</strong></p>
+            <h2 className="gameover-title">
+              {state.hp > 0 ? "ダンジョン踏破！" : "ゲームオーバー"}
+            </h2>
+            <p className="gameover-score">到達深度: <strong>{state.stage}</strong></p>
             <p className="gameover-score">最終スコア: <strong>{state.score.toLocaleString()}</strong></p>
             <button className="new-game-btn new-game-btn--large" onClick={handleNewGame}>
               最初からやり直す
@@ -327,7 +351,7 @@ export default function App() {
       )}
 
       {state.screen === 'dungeon' && (
-        <DungeonScreen state={state} onEnterBattle={startBattle} />
+        <DungeonScreen state={state} onEnterNode={startBattle} />
       )}
 
       {state.screen === 'battle' && (

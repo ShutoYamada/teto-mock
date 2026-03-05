@@ -1,4 +1,4 @@
-import type { BoardState, TetrominoCard, CellValue } from './types';
+import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType } from './types';
 
 export const BOARD_SIZE = 7;
 
@@ -128,4 +128,77 @@ export function rotateShape(shape: boolean[][]): boolean[][] {
   }
 
   return newShape;
+}
+
+export function generateDungeonMap(): DungeonNode[] {
+  const map: DungeonNode[] = [];
+  const TOTAL_DEPTH = 15;
+  const NODES_PER_DEPTH = 3;
+
+  // Depth 0 (Start Nodes)
+  for (let i = 0; i < NODES_PER_DEPTH; i++) {
+    map.push({
+      id: `node-0-${i}`,
+      depth: 0,
+      type: 'battle',
+      nextNodes: [],
+    });
+  }
+
+  // Depth 1 to 14
+  for (let d = 1; d < TOTAL_DEPTH; d++) {
+    const isBoss = d === TOTAL_DEPTH - 1;
+    // Boss layer only needs 1 node
+    const numNodes = isBoss ? 1 : NODES_PER_DEPTH;
+
+    // Create nodes for current depth
+    for (let i = 0; i < numNodes; i++) {
+      let type: DungeonNodeType = 'battle';
+      if (isBoss) type = 'boss';
+      else if (d % 4 === 0) type = 'event';
+      else if (d % 3 === 0) type = 'elite';
+      else if (d % 5 === 0) type = 'rest';
+
+      map.push({
+        id: `node-${d}-${i}`,
+        depth: d,
+        type,
+        nextNodes: [],
+      });
+    }
+
+    // Connect previous depth to current depth
+    const prevNodes = map.filter(n => n.depth === d - 1);
+    const currNodes = map.filter(n => n.depth === d);
+
+    if (isBoss) {
+      // Connect all previous nodes to the single boss node
+      prevNodes.forEach(pn => pn.nextNodes.push(currNodes[0].id));
+    } else {
+      // Connect each prev node to 1-2 next nodes to create branching
+      prevNodes.forEach((pn, i) => {
+        // Guarantee at least straight path connection
+        pn.nextNodes.push(currNodes[i].id);
+        
+        // Randomly connect to an adjacent node (criss-cross)
+        if (Math.random() > 0.5) {
+          const adjIndex = (i + 1) % NODES_PER_DEPTH;
+          if (!pn.nextNodes.includes(currNodes[adjIndex].id)) {
+            pn.nextNodes.push(currNodes[adjIndex].id);
+          }
+        }
+      });
+      
+      // Ensure all current nodes are reachable
+      currNodes.forEach(cn => {
+        const isReachable = prevNodes.some(pn => pn.nextNodes.includes(cn.id));
+        if (!isReachable) {
+           const randomPrev = prevNodes[Math.floor(Math.random() * prevNodes.length)];
+           randomPrev.nextNodes.push(cn.id);
+        }
+      });
+    }
+  }
+
+  return map;
 }
