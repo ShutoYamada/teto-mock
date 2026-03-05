@@ -151,8 +151,32 @@ export default function App() {
       }
       
       const newShield = state.shield + addedShields;
-      
-      // Flash combo hit (only for targeted damage or bomb damage)
+
+      // Handle Draw Blocks
+      let drawnCardsCount = 0;
+      if (selectedCard.blockTypes) {
+        for (let r = 0; r < selectedCard.blockTypes.length; r++) {
+          for (let c = 0; c < selectedCard.blockTypes[r].length; c++) {
+            if (selectedCard.blockTypes[r][c] === 'draw' && selectedCard.shape[r][c]) {
+              drawnCardsCount++;
+            }
+          }
+        }
+      }
+
+      let newHand = state.hand.filter((c: TetrominoCard) => c.id !== selectedCard.id);
+      let newDeck = [...state.deck];
+      let newDiscardPile = [...state.discardPile, selectedCard];
+
+      for (let i = 0; i < drawnCardsCount; i++) {
+        if (newDeck.length === 0 && newDiscardPile.length > 0) {
+          newDeck = [...newDiscardPile].sort(() => Math.random() - 0.5);
+          newDiscardPile = [];
+        }
+        if (newDeck.length > 0) {
+          newHand.push(newDeck.shift()!);
+        }
+      }
       const totalTargetDamage = damage + bombCount * 10;
       if (totalTargetDamage > 0) {
         setRecentDamage(totalTargetDamage);
@@ -173,9 +197,6 @@ export default function App() {
       
       const targetStillAlive = newEnemies.some((e: Enemy) => e.id === state.targetEnemyId);
       const newTargetId = targetStillAlive ? state.targetEnemyId : (newEnemies[0]?.id ?? null);
-      
-      const newHand = state.hand.filter((c: TetrominoCard) => c.id !== selectedCard.id);
-      const newDiscardPile = [...state.discardPile, selectedCard];
       
       let newMp = state.mp - selectedCard.cost + manaCount;
       if (newMp > state.maxMp) newMp = state.maxMp;
@@ -219,7 +240,18 @@ export default function App() {
     
     setTimeout(() => {
       setState((prev) => {
-        const totalDamage = prev.enemies.reduce((acc: number, enemy: Enemy) => acc + enemy.nextAttack, 0);
+        // Handle Spike blocks (self-damage)
+        let spikeDamage = 0;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (prev.board[r][c]?.blockType === 'spike') {
+              spikeDamage++;
+            }
+          }
+        }
+
+        const enemyDamage = prev.enemies.reduce((acc: number, enemy: Enemy) => acc + enemy.nextAttack, 0);
+        const totalDamage = spikeDamage + enemyDamage;
         
         let actualDamage = totalDamage - prev.shield;
         if (actualDamage < 0) actualDamage = 0;

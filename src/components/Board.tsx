@@ -88,6 +88,8 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
             const blockIcon = blockType === 'bomb' ? '💣' :
                               blockType === 'sword' ? '🗡️' :
                               blockType === 'shield' ? '🛡️' :
+                              blockType === 'draw' ? '💳' :
+                              blockType === 'spike' ? '🌵' :
                               blockType === 'mana' ? '💧' : previewBlockIcon;
 
             let cellClass = 'board-cell';

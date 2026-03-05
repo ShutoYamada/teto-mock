@@ -61,7 +61,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "全マス爆弾ブロック",
     rarity: "legendary",
   },
-    Mana: {
+  Mana: {
     shape: [
       [false, true, false],
       [true,  true, true]
@@ -77,7 +77,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "中心がマナブロック(消滅時MP+1)",
     rarity: "uncommon",
   },
-    Shield: {
+  Shield: {
     shape: [
       [true, true],
       [true, true],
@@ -92,6 +92,40 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     attack: 0,
     effectText: "全マス盾ブロック(被ダメ-1)",
     rarity: "uncommon",
+  },
+  Draw: {
+    shape: [
+      [false, true, false],
+      [false,  true, false]
+    ],
+    blockTypes: [
+      ['normal', 'draw', 'normal'],
+      ['normal', 'normal', 'normal']
+    ],
+    color: '#00FF7F',
+    glowColor: 'rgba(0, 255, 127, 0.5)',
+    cost: 2,
+    attack: 0,
+    effectText: "中心がドローブロック(配置時手札+1)",
+    rarity: "common",
+  },
+  PainfulCapitalIncrease: {
+    shape: [
+      [true],
+      [true],
+      [true]
+    ],
+    blockTypes: [
+      ['spike'],
+      ['draw'],
+      ['spike']
+    ],
+    color: '#FF6347',
+    glowColor: 'rgba(255, 99, 71, 0.5)',
+    cost: 1,
+    attack: 1,
+    effectText: "トゲ、ドロー、トゲ(配置時引くが毎Turn自傷)",
+    rarity: "rare",
   },
 }
 
@@ -218,7 +252,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease'];
   const rewards: TetrominoCard[] = [];
   
   // Pick 3 random cards for drafting

@@ -1,8 +1,8 @@
 export type TetrominoType = DefaultTetrominoType | CustomTetrominoType; 
 export type DefaultTetrominoType = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
-export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb';
+export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease';
 
-export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana';
+export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike';
 
 export interface TetrominoCard {
   id: string;

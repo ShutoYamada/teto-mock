@@ -49,6 +49,8 @@ export function TetrominoCard({ card, isSelected, onClick }: TetrominoCardProps)
             const icon = bType === 'bomb' ? '💣' :
                          bType === 'sword' ? '🗡️' :
                          bType === 'shield' ? '🛡️' :
+                         bType === 'draw' ? '💳' :
+                         bType === 'spike' ? '🌵' :
                          bType === 'mana' ? '💧' : null;
             return (
               <div
