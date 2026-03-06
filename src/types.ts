@@ -1,8 +1,8 @@
 export type TetrominoType = DefaultTetrominoType | CustomTetrominoType; 
 export type DefaultTetrominoType = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
-export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease';
+export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein';
 
-export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike';
+export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe';
 
 export interface TetrominoCard {
   id: string;
@@ -30,11 +30,33 @@ export type BoardState = CellValue[][];
 export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover';
 export type TurnState = 'player' | 'enemy';
 
+export type EnemyStatusType = 'defense' | 'fury' | 'reflect' | 'fallen';
+
+export interface EnemyStatus {
+  type: EnemyStatusType;
+  value: number;
+}
+
+export interface EnemyAction {
+  name: string;
+  description: string;
+  damageRange?: [number, number];
+  effect?: (enemy: Enemy, state: GameState) => Partial<Enemy> | Partial<GameState>;
+}
+
 export interface Enemy {
   id: string;
+  name: string;
+  type: 'normal' | 'elite' | 'boss';
   hp: number;
   maxHp: number;
-  nextAttack: number;
+  nextAttack: number; // For backward compatibility if needed, but we'll use intent
+  intent: {
+    actionName: string;
+    damage?: number;
+    description: string;
+  };
+  statuses: EnemyStatus[];
 }
 
 export type DungeonNodeType = 'battle' | 'boss' | 'event' | 'elite' | 'rest';

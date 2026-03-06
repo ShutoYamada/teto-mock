@@ -9,10 +9,12 @@ import {
   placeCard,
   clearLines,
   calculateDamage,
-  generateEnemyIntent,
   generateDungeonMap,
   rotateShape,
   rotateBlockTypes,
+  getRandomEnemy,
+  decideNextAction,
+  ENEMY_TEMPLATES,
   BOARD_SIZE,
 } from './gameLogic';
 import type { GameState, TetrominoCard, Enemy } from './types';
@@ -55,18 +57,17 @@ export default function App() {
     state.hand.find((c: TetrominoCard) => c.id === state.selectedCardId) ?? null;
 
   const startBattle = useCallback((nodeId: string) => {
-    setState((prev) => {
+    setState((prev: GameState) => {
       // Draw initial hand
       let deck = [...prev.deck];
       if (deck.length < 7) deck = buildDeck();
       
       const hand = deck.splice(0, 7);
       
-      // Calculate depth from the node ID structure 'node-{depth}-{index}'
       const nodeParts = nodeId.split('-');
       const depth = parseInt(nodeParts[1], 10);
       
-      const eHp = 40 + depth * 20;
+      const eHp = 40 + depth * 20; // Keep if needed for fallback, but getRandomEnemy uses its own ranges
 
       return {
         ...prev,
@@ -83,20 +84,16 @@ export default function App() {
         currentNodeId: nodeId,
         stage: depth + 1,
         enemies: [
-          {
-            id: `enemy-${nodeId}`,
-            hp: eHp,
-            maxHp: eHp,
-            nextAttack: generateEnemyIntent(depth + 1),
-          }
+          getRandomEnemy(depth + 1, depth === 14 ? 'boss' : (depth % 3 === 0 && depth > 0 ? 'elite' : 'normal'))
         ],
-        targetEnemyId: `enemy-${nodeId}`,
+        targetEnemyId: null, // Will be set by the getRandomEnemy result if we wanted, but let's just pick first
       };
     });
+    setState(prev => ({ ...prev, targetEnemyId: prev.enemies[0]?.id || null }));
   }, []);
 
   const handleCardClick = useCallback((id: string) => {
-    setState((prev) => {
+    setState((prev: GameState) => {
       // Can only select if we have enough MP
       const card = prev.hand.find((c: TetrominoCard) => c.id === id);
       if (card && prev.mp < card.cost) {
@@ -117,7 +114,7 @@ export default function App() {
 
       const boardAfterPlace = placeCard(state.board, selectedCard, row, col);
 
-      const { newBoard, clearedCount, bombCount, manaCount } = clearLines(boardAfterPlace);
+      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount } = clearLines(boardAfterPlace);
       
       let combo = state.combo;
       if (clearedCount > 0) {
@@ -136,7 +133,7 @@ export default function App() {
         combo = 0; 
       }
 
-      const damage = calculateDamage(boardAfterPlace, selectedCard, clearedCount, combo);
+      const damage = calculateDamage(boardAfterPlace, selectedCard, clearedCount, combo, borderCount, stripeCount);
       
       // Calculate Shield granted by this card
       let addedShields = 0;
@@ -189,7 +186,38 @@ export default function App() {
         if (e.id === state.targetEnemyId) {
            enemyDamage += damage;
         }
-        return { ...e, hp: Math.max(0, e.hp - enemyDamage) };
+        
+        // Handle Enemy Statuses
+        let actualEnemyDamage = enemyDamage;
+        const defense = e.statuses.find(s => s.type === 'defense');
+        if (defense) {
+          actualEnemyDamage = Math.max(0, actualEnemyDamage - defense.value);
+          // Remove defense status after it's used
+        }
+
+        const isFallen = e.statuses.some(s => s.type === 'fallen');
+        if (isFallen) {
+          actualEnemyDamage = Math.floor(actualEnemyDamage * 1.5);
+        }
+
+        const newStatuses = e.statuses.filter(s => s.type !== 'defense');
+
+        return { 
+          ...e, 
+          hp: Math.max(0, e.hp - actualEnemyDamage),
+          statuses: newStatuses
+        };
+      });
+
+      // Handle Reflect Damage
+      let reflectDamage = 0;
+      state.enemies.forEach(e => {
+        if (e.id === state.targetEnemyId) {
+          const reflect = e.statuses.find(s => s.type === 'reflect');
+          if (reflect && damage > 0) {
+            reflectDamage += reflect.value;
+          }
+        }
       });
 
       // Filter out dead enemies
@@ -228,7 +256,8 @@ export default function App() {
         score: newScore,
         clearedLines: newClearedLines,
         rewardCards,
-        gold: newEnemies.length === 0 ? state.gold + state.stage * 10 : state.gold,
+        gold: newEnemies.length === 0 ? state.gold + state.stage * 10 + goldCount * 5 : state.gold + goldCount * 5,
+        hp: Math.max(0, state.hp - reflectDamage),
       });
     },
     [selectedCard, state]
@@ -236,10 +265,10 @@ export default function App() {
 
   const handleTurnEnd = useCallback(() => {
     // Enemy Turn
-    setState((prev) => ({ ...prev, turn: 'enemy', selectedCardId: null }));
+    setState((prev: GameState) => ({ ...prev, turn: 'enemy', selectedCardId: null }));
     
     setTimeout(() => {
-      setState((prev) => {
+      setState((prev: GameState) => {
         // Handle Spike blocks (self-damage)
         let spikeDamage = 0;
         for (let r = 0; r < BOARD_SIZE; r++) {
@@ -280,11 +309,38 @@ export default function App() {
           }
         }
 
-        // Update enemy intents
-        const newEnemies = prev.enemies.map((e: Enemy) => ({
-          ...e,
-          nextAttack: generateEnemyIntent(prev.stage)
-        }));
+        // Update enemy intents and process effects
+        // Execute enemy effects for the turn that JUST ended (the turn they just took)
+        // Actually, the intent describes what they DID. So we should have executed effects
+        // Or process them now. Let's process the effects of the enemies BEFORE we decide new intents.
+        
+        // Wait, the flow is:
+        // 1. Current Enemy Intent is executed (Damage + Effect)
+        // 2. Decide NEW Intent for the next turn.
+
+        // So let's re-organized handleTurnEnd:
+        let processedEnemies = [...prev.enemies];
+
+        processedEnemies.forEach(enemy => {
+           const template = (Object.values(ENEMY_TEMPLATES) as any[]).find(t => t.name === enemy.name);
+           // We should store which ACTION was selected in the enemy object or template lookup.
+           // For now, let's just look at the action name in the intent.
+           const action = template?.actions.find((a: any) => a.name === enemy.intent.actionName);
+           if (action?.effect) {
+              const result = action.effect(enemy, prev);
+              // Simple merge for enemy updates
+              const enemyIdx = processedEnemies.findIndex(e => e.id === enemy.id);
+              processedEnemies[enemyIdx] = { ...processedEnemies[enemyIdx], ...result as Partial<Enemy> };
+              // Simple merge for state updates (e.g. if we add player damage effect)
+              // stateMod = { ...stateMod, ...result as Partial<GameState> };
+           }
+        });
+
+        // Filter out enemies that fled or died from effects
+        processedEnemies = processedEnemies.filter(e => e.hp > 0);
+
+        // Decide NEXT intents
+        processedEnemies = processedEnemies.map(e => decideNextAction(e));
 
         return {
           ...prev,
@@ -292,18 +348,18 @@ export default function App() {
           mp: prev.maxMp, // Restore MP at start of player turn
           shield: 0, // Armor disappears at start of your turn
           turn: 'player',
-          enemies: newEnemies,
+          enemies: processedEnemies,
           hand: newHand,
           deck: newDeck,
           discardPile: newDiscardPile,
           combo: 0 // Reset combo on turn end
         };
       });
-    }, 1000); // 1 second delay for enemy attack animation
+    }, 1000); 
   }, []);
 
   const handleRewardSelect = useCallback((card: TetrominoCard) => {
-    setState((prev) => {
+    setState((prev: GameState) => {
       const isBoss = prev.currentNodeId?.split('-')[1] === '14'; // depth 14 is boss
       
       if (isBoss) {
@@ -333,9 +389,9 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setState((prev) => ({ ...prev, selectedCardId: null }));
+        setState((prev: GameState) => ({ ...prev, selectedCardId: null }));
       } else if (e.key === 'r' || e.key === 'R' || e.key === 'ArrowUp') {
-        setState((prev) => {
+        setState((prev: GameState) => {
           if (!prev.selectedCardId) return prev;
           const cardIndex = prev.hand.findIndex((c: TetrominoCard) => c.id === prev.selectedCardId);
           if (cardIndex === -1) return prev;
@@ -355,7 +411,7 @@ export default function App() {
     
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault(); // Prevent standard right-click menu
-      setState((prev) => {
+      setState((prev: GameState) => {
         if (!prev.selectedCardId) return prev;
         const cardIndex = prev.hand.findIndex((c: TetrominoCard) => c.id === prev.selectedCardId);
         if (cardIndex === -1) return prev;

@@ -32,6 +32,7 @@ export function BattleScreen({
         <div className="player-stats">
           <div className="stat-row">HP: {state.hp} / {state.maxHp}</div>
           <div className="stat-row">MP: {state.mp} / {state.maxMp}</div>
+          <div className="stat-row" style={{ color: '#FFD700', fontWeight: 'bold' }}>💰 Gold: {state.gold}</div>
           {state.shield > 0 && (
              <div className="stat-row" style={{ color: '#FFE000', fontWeight: 'bold' }}>
                🛡️ シールド: {state.shield}
@@ -68,9 +69,21 @@ export function BattleScreen({
                   background: isTarget ? 'rgba(255, 64, 64, 0.1)' : 'transparent',
                 }}
               >
-                <div className="stat-row title">{enemy.maxHp > 70 ? 'ボス' : '敵'}</div>
+                <div className="stat-row title">{enemy.name}</div>
                 <div className="stat-row">HP: {enemy.hp} / {enemy.maxHp}</div>
-                <div className="stat-row intent">予告: 攻撃 {enemy.nextAttack}</div>
+                <div className="stat-row intent" style={{ color: '#ffcc00' }}>
+                  {enemy.intent.actionName} {enemy.intent.damage ? `(${enemy.intent.damage}ダメ)` : ''}
+                </div>
+                <div className="stat-row description" style={{ fontSize: '0.7rem', color: '#ccc' }}>
+                  {enemy.intent.description}
+                </div>
+                <div className="enemy-statuses" style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                  {enemy.statuses.map((s, idx) => (
+                    <div key={idx} className="status-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: '4px' }}>
+                      {s.type === 'fury' ? '🔥' : s.type === 'defense' ? '🛡️' : s.type === 'reflect' ? '🪞' : '🥴'}{s.value}
+                    </div>
+                  ))}
+                </div>
                 {isFlashing && <div className="damage-popup">-{damageAmount}</div>}
               </div>
             );

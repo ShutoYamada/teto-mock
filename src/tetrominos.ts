@@ -127,6 +127,22 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "トゲ、ドロー、トゲ(配置時引くが毎Turn自傷)",
     rarity: "rare",
   },
+  GoldVein: {
+    shape: [
+      [true],
+      [true]
+    ],
+    blockTypes: [
+      ['gold'],
+      ['gold']
+    ],
+    color: '#FFD700',
+    glowColor: 'rgba(255, 215, 0, 0.5)',
+    cost: 1,
+    attack: 2,
+    effectText: "全マスゴールドブロック(消滅時Gold+5)",
+    rarity: "uncommon",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
@@ -252,7 +268,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein'];
   const rewards: TetrominoCard[] = [];
   
   // Pick 3 random cards for drafting

@@ -1,4 +1,6 @@
-import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType } from './types';
+import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType, Enemy, EnemyAction, GameState, EnemyStatus } from './types';
+// GameState and EnemyStatus are used in type signatures.
+
 
 export const BOARD_SIZE = 7;
 
@@ -53,6 +55,9 @@ export interface ClearResult {
   clearedCount: number;
   bombCount: number;
   manaCount: number;
+  goldCount: number;
+  borderCount: number;
+  stripeCount: number;
 }
 
 export function clearLines(board: BoardState): ClearResult {
@@ -70,7 +75,7 @@ export function clearLines(board: BoardState): ClearResult {
 
   const clearedCount = fullRows.size + fullCols.size;
   if (clearedCount === 0) {
-    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0 };
+    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0 };
   }
 
   const cellsToClear = new Set<string>();
@@ -87,6 +92,9 @@ export function clearLines(board: BoardState): ClearResult {
   // Resolve Cascading Bombs
   let bombCount = 0;
   let manaCount = 0;
+  let goldCount = 0;
+  let borderCount = 0;
+  let stripeCount = 0;
   
   let newlyAddedBombs = true;
   while (newlyAddedBombs) {
@@ -125,12 +133,18 @@ export function clearLines(board: BoardState): ClearResult {
   // Recalculate full totals after cascades
   bombCount = 0;
   manaCount = 0;
+  goldCount = 0;
+  borderCount = 0;
+  stripeCount = 0;
   cellsToClear.forEach((pos) => {
     const [r, c] = pos.split(',').map(Number);
     const cellData = board[r][c];
     if (cellData) {
       if (cellData.blockType === 'bomb') bombCount++;
       if (cellData.blockType === 'mana') manaCount++;
+      if (cellData.blockType === 'gold') goldCount++;
+      if (cellData.blockType === 'border' && fullRows.has(r)) borderCount++;
+      if (cellData.blockType === 'stripe' && fullCols.has(c)) stripeCount++;
     }
   });
 
@@ -142,7 +156,7 @@ export function clearLines(board: BoardState): ClearResult {
     })
   );
 
-  return { newBoard, clearedCount, bombCount, manaCount };
+  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount };
 }
 
 export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
@@ -162,7 +176,9 @@ export function calculateDamage(
   board: BoardState,
   card: TetrominoCard | null,
   clearedCount: number,
-  combo: number
+  combo: number,
+  borderCount: number = 0,
+  stripeCount: number = 0
 ): number {
   let damage = 0;
   if (card) {
@@ -186,15 +202,126 @@ export function calculateDamage(
     if (combo > 0) {
       damage += combo * 5;
     }
+    // Border/Stripe bonuses
+    damage += borderCount * 5;
+    damage += stripeCount * 5;
   }
   return damage;
 }
 
 export function generateEnemyIntent(stage: number): number {
-  // Simple formula: Stage 1 = 5-10, Stage 2 = 10-20, etc.
+  // Keeping this for generic use, but we'll use getNextEnemyAction for specific enemies
   const base = 5 * stage;
   const variance = Math.floor(Math.random() * (5 * stage));
   return base + variance;
+}
+
+export const ENEMY_TEMPLATES: Record<string, {
+  name: string;
+  type: 'normal' | 'elite' | 'boss';
+  hpRange: [number, number];
+  actions: EnemyAction[];
+}> = {
+  slime: {
+    name: 'スライム',
+    type: 'normal',
+    hpRange: [50, 55],
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに5～10ダメージを与える',
+        damageRange: [5, 10],
+      },
+      {
+        name: '逃げる',
+        description: '自分を盤面から消す',
+        effect: (_enemy: Enemy) => ({ hp: 0 }),
+      }
+    ]
+  },
+  dragon: {
+    name: 'ドラゴン',
+    type: 'elite',
+    hpRange: [80, 80],
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに10～15ダメージを与える',
+        damageRange: [10, 15],
+      },
+      {
+        name: '怒る',
+        description: '自身に憤怒(5)を発動する',
+        effect: (enemy: Enemy) => {
+          const statuses = [...enemy.statuses];
+          const fury = statuses.find(s => s.type === 'fury');
+          if (fury) fury.value += 5;
+          else statuses.push({ type: 'fury', value: 5 });
+          return { statuses };
+        }
+      }
+    ]
+  }
+};
+
+export function getRandomEnemy(_stage: number, type: 'normal' | 'elite' | 'boss'): Enemy {
+  const templates = Object.values(ENEMY_TEMPLATES).filter(t => t.type === type);
+  const template = templates[Math.floor(Math.random() * templates.length)];
+  
+  const hp = template.hpRange[0] + Math.floor(Math.random() * (template.hpRange[1] - template.hpRange[0] + 1));
+  
+  const enemy: Enemy = {
+    id: `enemy-${Math.random().toString(36).substr(2, 9)}`,
+    name: template.name,
+    type: template.type,
+    hp: hp,
+    maxHp: hp,
+    nextAttack: 0,
+    statuses: [],
+    intent: {
+      actionName: '待機',
+      description: '様子をうかがっている'
+    }
+  };
+  
+  return decideNextAction(enemy);
+}
+
+export function decideNextAction(enemy: Enemy): Enemy {
+  const template = Object.values(ENEMY_TEMPLATES).find(t => t.name === enemy.name);
+  if (!template) return enemy;
+  
+  let action: EnemyAction;
+  const rand = Math.random() * 100;
+  
+  if (enemy.name === 'スライム') {
+    action = rand < 95 ? template.actions[0] : template.actions[1];
+  } else if (enemy.name === 'ドラゴン') {
+    action = rand < 50 ? template.actions[0] : template.actions[1];
+  } else {
+    action = template.actions[0];
+  }
+  
+  let damage = 0;
+  if (action.damageRange) {
+    damage = action.damageRange[0] + Math.floor(Math.random() * (action.damageRange[1] - action.damageRange[0] + 1));
+  }
+  
+  // Apply Fury bonus to damage
+  const fury = enemy.statuses.find((s: EnemyStatus) => s.type === 'fury');
+  if (fury && damage > 0) {
+    damage += fury.value;
+  }
+
+  return {
+    ...enemy,
+    nextAttack: damage,
+    intent: {
+      actionName: action.name,
+      damage: damage > 0 ? damage : undefined,
+      description: action.description
+    }
+  };
 }
 
 export function rotateShape(shape: boolean[][]): boolean[][] {
