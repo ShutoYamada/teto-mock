@@ -57,6 +57,7 @@ export interface Enemy {
     description: string;
   };
   statuses: EnemyStatus[];
+  goldReward: number;
 }
 
 export type ArtifactRarity = 'common' | 'uncommon' | 'rare' | 'boss';

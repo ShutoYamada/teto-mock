@@ -226,12 +226,14 @@ export const ENEMY_TEMPLATES: Record<string, {
   name: string;
   type: 'normal' | 'elite' | 'boss';
   hpRange: [number, number];
+  goldReward: number;
   actions: EnemyAction[];
 }> = {
   slime: {
     name: 'スライム',
     type: 'normal',
     hpRange: [50, 55],
+    goldReward: 30,
     actions: [
       {
         name: '通常攻撃',
@@ -249,6 +251,7 @@ export const ENEMY_TEMPLATES: Record<string, {
     name: 'ドラゴン',
     type: 'elite',
     hpRange: [80, 80],
+    goldReward: 30,
     actions: [
       {
         name: '通常攻撃',
@@ -282,6 +285,7 @@ export function getRandomEnemy(_stage: number, type: 'normal' | 'elite' | 'boss'
     type: template.type,
     hp: hp,
     maxHp: hp,
+    goldReward: template.goldReward,
     nextAttack: 0,
     statuses: [],
     intent: {
@@ -442,6 +446,12 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     rarity: 'uncommon',
     description: 'すべてのミノカードの基礎攻撃力が1上昇する',
     effect: (state: GameState) => state, // Not used in calculation yet, handled directly in calculateDamage
+  },
+  abacus: {
+    name: 'そろばん',
+    rarity: 'common',
+    description: '戦闘終了後に獲得するGoldが+10%される(小数点以下は切り捨て)',
+    effect: (state: GameState) => state,
   }
 };
 

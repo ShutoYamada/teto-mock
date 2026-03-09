@@ -45,7 +45,10 @@ function initGame(): GameState {
     rewardCards: [],
     score: 0,
     clearedLines: 0,
-    artifacts: [createArtifact('brave_sword')], // Initially give Brave Sword for testing
+    artifacts: [
+      createArtifact('brave_sword'),
+      createArtifact('abacus')
+    ], // Initially give artifacts for testing
   };
 }
 
@@ -243,6 +246,20 @@ export default function App() {
         rewardCards = generateRewardCards();
       }
 
+      // Calculate Gold Reward
+      let earnedGold = goldCount * 5;
+      if (newEnemies.length === 0) {
+        // Battle victory bonus: Sum of goldReward from ALL enemies in this encounter
+        // Note: state.enemies contains the initial enemies for the turn
+        const encounterGold = state.enemies.reduce((acc, e) => acc + e.goldReward, 0);
+        earnedGold += encounterGold;
+
+        // Apply Abacus Artifact (+10% gold)
+        if (state.artifacts.some(a => a.id === 'abacus')) {
+          earnedGold = Math.floor(earnedGold * 1.1);
+        }
+      }
+
       setState({
         ...state,
         screen: nextScreen,
@@ -258,7 +275,7 @@ export default function App() {
         score: newScore,
         clearedLines: newClearedLines,
         rewardCards,
-        gold: newEnemies.length === 0 ? state.gold + state.stage * 10 + goldCount * 5 : state.gold + goldCount * 5,
+        gold: state.gold + earnedGold,
         hp: Math.max(0, state.hp - reflectDamage),
       });
     },
@@ -451,7 +468,9 @@ export default function App() {
             <span className="stat-label">アーティファクト</span>
             <div className="artifact-list">
               {state.artifacts.map(a => (
-                <span key={a.id} className="artifact-icon" title={a.description}>⚔️</span>
+                <span key={a.id} className="artifact-icon" title={`${a.name}: ${a.description}`}>
+                  {a.id === 'brave_sword' ? '⚔️' : a.id === 'abacus' ? '🧮' : '💎'}
+                </span>
               ))}
             </div>
           </div>
