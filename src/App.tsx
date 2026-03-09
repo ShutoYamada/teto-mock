@@ -18,7 +18,7 @@ import {
   BOARD_SIZE,
   createArtifact,
 } from './gameLogic';
-import type { GameState, TetrominoCard, Enemy, Status, Artifact } from './types';
+import type { GameState, TetrominoCard, Enemy, Status, Artifact, BoardState } from './types';
 
 function initGame(): GameState {
   const deck = buildDeck();
@@ -155,7 +155,9 @@ export default function App() {
         state.statuses,
         targetEnemy?.statuses || [],
         targetEnemy?.type,
-        state.deck.length + state.hand.length + state.discardPile.length
+        state.deck.length + state.hand.length + state.discardPile.length,
+        row,
+        col
       );
       
       // Calculate Shield granted by this card
@@ -378,11 +380,15 @@ export default function App() {
         }
 
         // Process enemy effects
+        let currentBoard = prev.board;
         processedEnemies.forEach((enemy, idx) => {
            const template = Object.values(ENEMY_TEMPLATES).find(t => t.name === enemy.name);
            const action = template?.actions.find(a => a.name === enemy.intent.actionName);
            if (action?.effect) {
-              const result = action.effect(enemy, prev);
+              const result = action.effect(enemy, { ...prev, board: currentBoard });
+              if ('board' in result) {
+                 currentBoard = result.board as BoardState;
+              }
               processedEnemies[idx] = { ...processedEnemies[idx], ...result as Partial<Enemy> };
            }
         });
@@ -410,6 +416,7 @@ export default function App() {
           ...prev,
           hp: newHp,
           mp: prev.maxMp, // Restore MP at start of player turn
+          board: currentBoard,
           shield: 0, // Armor disappears at start of your turn
           turn: 'player',
           enemies: newEnemiesWithUpdatedStatuses,

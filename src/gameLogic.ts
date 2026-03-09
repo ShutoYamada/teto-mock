@@ -185,7 +185,9 @@ export function calculateDamage(
   playerStatuses: Status[] = [],
   targetEnemyStatuses: Status[] = [],
   targetEnemyType?: 'normal' | 'elite' | 'boss',
-  deckLength: number = 0
+  deckLength: number = 0,
+  placedRow?: number,
+  placedCol?: number
 ): number {
   let damage = 0;
   if (card) {
@@ -227,6 +229,63 @@ export function calculateDamage(
     const power = playerStatuses.find(s => s.type === 'power');
     if (power) {
       damage += power.value;
+    }
+
+    // Trash Block Penalty
+    if (placedRow !== undefined && placedCol !== undefined) {
+      let trashPenalty = 0;
+      const size = board.length;
+      
+      // We need to check all cells of the placed card
+      for (let r = 0; r < card.shape.length; r++) {
+        for (let c = 0; c < card.shape[r].length; c++) {
+          if (!card.shape[r][c]) continue;
+          
+          const br = placedRow + r;
+          const bc = placedCol + c;
+          
+          // Check 4 adjacent cells for each cell of the Mino
+          const adjacents = [
+            [br - 1, bc], [br + 1, bc], [br, bc - 1], [br, bc + 1]
+          ];
+          
+          for (const [ar, ac] of adjacents) {
+            if (ar >= 0 && ar < size && ac >= 0 && ac < size) {
+              if (board[ar][ac]?.blockType === 'trash') {
+                // To avoid double counting same trash block for different Mino cells, 
+                // we should track which trash blocks have already penalized.
+                // However, "基础伤害を1マイナスする" could mean per-cell. 
+                // Let's interpret as: if ANY part of the Mino is adjacent to A trash block, -1.
+                // If adjacent to TWO different trash blocks, -2.
+              }
+            }
+          }
+        }
+      }
+      
+      // Re-evaluating: "隣接するマスにミノが配置された時の基礎ダメージを1マイナスする"
+      // Efficient way: find all trash blocks, check if any are adjacent to the new Mino.
+      const placedCells = new Set<string>();
+      for (let r = 0; r < card.shape.length; r++) {
+        for (let c = 0; c < card.shape[r].length; c++) {
+          if (card.shape[r][c]) placedCells.add(`${placedRow + r},${placedCol + c}`);
+        }
+      }
+
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (board[r][c]?.blockType === 'trash') {
+            const isAdjacent = [
+              `${r-1},${c}`, `${r+1},${c}`, `${r},${c-1}`, `${r},${c+1}`
+            ].some(pos => placedCells.has(pos));
+            
+            if (isAdjacent) {
+              trashPenalty++;
+            }
+          }
+        }
+      }
+      damage = Math.max(0, damage - trashPenalty);
     }
   }
   
@@ -310,11 +369,59 @@ export const ENEMY_TEMPLATES: Record<string, {
         }
       }
     ]
+  },
+  goblin: {
+    name: 'ゴブリン',
+    type: 'normal',
+    hpRange: [60, 60],
+    goldReward: 25,
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに6～11ダメージを与える',
+        damageRange: [6, 11],
+      },
+      {
+        name: 'ゴミを投げる',
+        description: '5ダメージ + ゴミブロックを盤面に配置',
+        damageRange: [5, 5],
+        effect: (_enemy: Enemy, state: GameState) => {
+          // Find empty cells
+          const emptyCells: {r: number, c: number}[] = [];
+          for (let r = 0; r < state.board.length; r++) {
+            for (let c = 0; c < state.board[r].length; c++) {
+              if (state.board[r][c] === null) {
+                emptyCells.push({r, c});
+              }
+            }
+          }
+          
+          if (emptyCells.length === 0) return {};
+          
+          const target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+          const newBoard = state.board.map(row => [...row]);
+          newBoard[target.r][target.c] = {
+             type: 'I', // Filler type
+             blockType: 'trash'
+          };
+          return { board: newBoard };
+        }
+      }
+    ]
   }
 };
 
-export function getRandomEnemy(_stage: number, type: 'normal' | 'elite' | 'boss'): Enemy {
-  const templates = Object.values(ENEMY_TEMPLATES).filter(t => t.type === type);
+export function getRandomEnemy(stage: number, type: 'normal' | 'elite' | 'boss'): Enemy {
+  let templates = Object.values(ENEMY_TEMPLATES).filter(t => t.type === type);
+  
+  // Filter by stage
+  if (type === 'normal') {
+    if (stage === 1 || stage === 2) {
+      // Slime and Goblin
+    } else {
+      templates = templates.filter(t => t.name !== 'ゴブリン');
+    }
+  }
   const template = templates[Math.floor(Math.random() * templates.length)];
   
   const hp = template.hpRange[0] + Math.floor(Math.random() * (template.hpRange[1] - template.hpRange[0] + 1));
@@ -347,6 +454,8 @@ export function decideNextAction(enemy: Enemy): Enemy {
   if (enemy.name === 'スライム') {
     action = rand < 95 ? template.actions[0] : template.actions[1];
   } else if (enemy.name === 'ドラゴン') {
+    action = rand < 50 ? template.actions[0] : template.actions[1];
+  } else if (enemy.name === 'ゴブリン') {
     action = rand < 50 ? template.actions[0] : template.actions[1];
   } else {
     action = template.actions[0];

@@ -93,6 +93,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                               blockType === 'gold' ? '💰' :
                               blockType === 'border' ? '➖' :
                               blockType === 'stripe' ? '｜' :
+                              blockType === 'trash' ? '🗑️' :
                               blockType === 'mana' ? '💧' : previewBlockIcon;
 
             let cellClass = 'board-cell';
