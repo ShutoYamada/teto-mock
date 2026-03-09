@@ -16,6 +16,7 @@ import {
   decideNextAction,
   ENEMY_TEMPLATES,
   BOARD_SIZE,
+  createArtifact,
 } from './gameLogic';
 import type { GameState, TetrominoCard, Enemy } from './types';
 
@@ -44,6 +45,7 @@ function initGame(): GameState {
     rewardCards: [],
     score: 0,
     clearedLines: 0,
+    artifacts: [createArtifact('brave_sword')], // Initially give Brave Sword for testing
   };
 }
 
@@ -133,7 +135,7 @@ export default function App() {
         combo = 0; 
       }
 
-      const damage = calculateDamage(boardAfterPlace, selectedCard, clearedCount, combo, borderCount, stripeCount);
+      const damage = calculateDamage(boardAfterPlace, selectedCard, clearedCount, combo, borderCount, stripeCount, state.artifacts);
       
       // Calculate Shield granted by this card
       let addedShields = 0;
@@ -444,6 +446,14 @@ export default function App() {
           <div className="stat-block">
             <span className="stat-label">スコア</span>
             <span className="stat-value">{state.score.toLocaleString()}</span>
+          </div>
+          <div className="stat-block">
+            <span className="stat-label">アーティファクト</span>
+            <div className="artifact-list">
+              {state.artifacts.map(a => (
+                <span key={a.id} className="artifact-icon" title={a.description}>⚔️</span>
+              ))}
+            </div>
           </div>
           {state.screen !== 'gameover' && (
              <button className="new-game-btn" onClick={handleNewGame} style={{marginLeft: 'auto'}}>

@@ -87,8 +87,18 @@ body {
 .stats {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 20px;
   flex-wrap: wrap;
+}
+
+.artifact-list {
+  display: flex;
+  gap: 5px;
+}
+
+.artifact-icon {
+  font-size: 1.2rem;
+  cursor: help;
 }
 
 .stat-block {

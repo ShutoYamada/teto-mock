@@ -1,4 +1,4 @@
-import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType, Enemy, EnemyAction, GameState, EnemyStatus } from './types';
+import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType, Enemy, EnemyAction, GameState, EnemyStatus, Artifact } from './types';
 // GameState and EnemyStatus are used in type signatures.
 
 
@@ -178,7 +178,8 @@ export function calculateDamage(
   clearedCount: number,
   combo: number,
   borderCount: number = 0,
-  stripeCount: number = 0
+  stripeCount: number = 0,
+  artifacts: Artifact[] = []
 ): number {
   let damage = 0;
   if (card) {
@@ -194,6 +195,11 @@ export function calculateDamage(
       }
     }
     damage += swordBuff;
+
+    // Artifact Effects
+    if (artifacts.some(a => a.id === 'brave_sword')) {
+      damage += 1;
+    }
   }
   if (clearedCount > 0) {
     // Base line clear damage
@@ -428,4 +434,22 @@ export function generateDungeonMap(): DungeonNode[] {
   }
 
   return map;
+}
+
+export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
+  brave_sword: {
+    name: '勇者の剣',
+    rarity: 'uncommon',
+    description: 'すべてのミノカードの基礎攻撃力が1上昇する',
+    effect: (state: GameState) => state, // Not used in calculation yet, handled directly in calculateDamage
+  }
+};
+
+export function createArtifact(id: string): Artifact {
+  const def = ARTIFACT_DEFS[id];
+  if (!def) throw new Error(`Artifact definition for ${id} not found`);
+  return {
+    id,
+    ...def
+  };
 }
