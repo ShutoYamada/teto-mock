@@ -4,9 +4,9 @@ import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType
 
 export const BOARD_SIZE = 7;
 
-export function createEmptyBoard(): BoardState {
-  return Array.from({ length: BOARD_SIZE }, () =>
-    Array.from({ length: BOARD_SIZE }, () => null as CellValue)
+export function createEmptyBoard(size: number = BOARD_SIZE): BoardState {
+  return Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => null as CellValue)
   );
 }
 
@@ -21,7 +21,7 @@ export function canPlaceCard(
       if (!card.shape[r][c]) continue;
       const br = startRow + r;
       const bc = startCol + c;
-      if (br < 0 || br >= BOARD_SIZE || bc < 0 || bc >= BOARD_SIZE) return false;
+      if (br < 0 || br >= board.length || bc < 0 || bc >= board[0].length) return false;
       if (board[br][bc] !== null) return false;
     }
   }
@@ -61,15 +61,16 @@ export interface ClearResult {
 }
 
 export function clearLines(board: BoardState): ClearResult {
+  const size = board.length;
   // Find fully-filled rows
   const fullRows = new Set<number>();
-  for (let r = 0; r < BOARD_SIZE; r++) {
+  for (let r = 0; r < size; r++) {
     if (board[r].every((cell) => cell !== null)) fullRows.add(r);
   }
 
   // Find fully-filled columns
   const fullCols = new Set<number>();
-  for (let c = 0; c < BOARD_SIZE; c++) {
+  for (let c = 0; c < size; c++) {
     if (board.every((row) => row[c] !== null)) fullCols.add(c);
   }
 
@@ -81,8 +82,8 @@ export function clearLines(board: BoardState): ClearResult {
   const cellsToClear = new Set<string>();
   
   // Tag line clear cells
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
        if (fullRows.has(r) || fullCols.has(c)) {
          cellsToClear.add(`${r},${c}`);
        }
@@ -117,7 +118,7 @@ export function clearLines(board: BoardState): ClearResult {
             if (dr === 0 && dc === 0) continue;
             const nr = r + dr;
             const nc = c + dc;
-            if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+            if (nr >= 0 && nr < board.length && nc >= 0 && nc < board[0].length) {
               const neighborStr = `${nr},${nc}`;
               if (!cellsToClear.has(neighborStr)) {
                  cellsToClear.add(neighborStr);
@@ -162,9 +163,10 @@ export function clearLines(board: BoardState): ClearResult {
 export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
   if (hand.length === 0) return false;
   // Game over if no card in hand can be placed anywhere on the board
+  const size = board.length;
   for (const card of hand) {
-    for (let r = 0; r < BOARD_SIZE; r++) {
-      for (let c = 0; c < BOARD_SIZE; c++) {
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
         if (canPlaceCard(board, card, r, c)) return false;
       }
     }
@@ -181,7 +183,9 @@ export function calculateDamage(
   stripeCount: number = 0,
   artifacts: Artifact[] = [],
   playerStatuses: Status[] = [],
-  targetEnemyStatuses: Status[] = []
+  targetEnemyStatuses: Status[] = [],
+  targetEnemyType?: 'normal' | 'elite' | 'boss',
+  deckLength: number = 0
 ): number {
   let damage = 0;
   if (card) {
@@ -202,6 +206,22 @@ export function calculateDamage(
     if (artifacts.some(a => a.id === 'brave_sword')) {
       damage += 1;
     }
+
+    if (artifacts.some(a => a.id === 'devil_statue')) {
+      damage += 1;
+    }
+
+    if (artifacts.some(a => a.id === 'figure_eight_charm')) {
+      damage += 1;
+    }
+
+    if (targetEnemyType === 'elite' && artifacts.some(a => a.id === 'elite_killer')) {
+      damage += 1;
+    }
+
+    if (artifacts.some(a => a.id === 'seven_card')) {
+      damage += Math.floor(deckLength / 7);
+    }
     
     // Player Power Status
     const power = playerStatuses.find(s => s.type === 'power');
@@ -220,6 +240,10 @@ export function calculateDamage(
     // Border/Stripe bonuses
     damage += borderCount * 5;
     damage += stripeCount * 5;
+
+    if (artifacts.some(a => a.id === 'figure_eight_charm')) {
+      damage += (borderCount + stripeCount); // Matrix attack bonus +1 per block
+    }
   }
   
   // Target Enemy Fallen Status (1.5x damage)
@@ -468,6 +492,36 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     rarity: 'common',
     description: '戦闘終了後に獲得するGoldが+10%される(小数点以下は切り捨て)',
     effect: (state: GameState) => state,
+  },
+  brave_shield: {
+    name: '勇者の盾',
+    rarity: 'uncommon',
+    description: '被ダメージが-1される',
+  },
+  white_card: {
+    name: '白紙のカード',
+    rarity: 'common',
+    description: '戦闘勝利後の報酬選択時に選択可能なカードの候補が+1される',
+  },
+  elite_killer: {
+    name: 'エリートキラー',
+    rarity: 'uncommon',
+    description: 'エリートモンスターに対して与えるダメージが+1される',
+  },
+  devil_statue: {
+    name: '悪魔の像',
+    rarity: 'uncommon',
+    description: '戦闘開始時の手札枚数が-1され、すべてのミノカードの基礎攻撃力が+1される',
+  },
+  seven_card: {
+    name: '7カード',
+    rarity: 'rare',
+    description: 'デッキのカード枚数7枚ごとにすべてのミノカードの基礎攻撃力が+1される',
+  },
+  figure_eight_charm: {
+    name: '8の字のお守り',
+    rarity: 'rare',
+    description: '盤面の縦横が1マスずつ増え、基礎攻撃力と行列攻撃力が+1される',
   }
 };
 

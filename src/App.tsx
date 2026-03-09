@@ -18,13 +18,14 @@ import {
   BOARD_SIZE,
   createArtifact,
 } from './gameLogic';
-import type { GameState, TetrominoCard, Enemy, Status } from './types';
+import type { GameState, TetrominoCard, Enemy, Status, Artifact } from './types';
 
 function initGame(): GameState {
   const deck = buildDeck();
   return {
     screen: 'dungeon',
-    board: createEmptyBoard(),
+    board: createEmptyBoard(BOARD_SIZE),
+    boardSize: BOARD_SIZE,
     deck,
     hand: [],
     discardPile: [],
@@ -68,7 +69,12 @@ export default function App() {
       let deck = [...prev.deck];
       if (deck.length < 7) deck = buildDeck();
       
-      const hand = deck.splice(0, 7);
+      let baseHandSize = 7;
+      if (prev.artifacts.some(a => a.id === 'devil_statue')) {
+        baseHandSize -= 1;
+      }
+      
+      const hand = deck.splice(0, baseHandSize);
       
       const nodeParts = nodeId.split('-');
       const depth = parseInt(nodeParts[1], 10);
@@ -147,7 +153,9 @@ export default function App() {
         stripeCount, 
         state.artifacts,
         state.statuses,
-        targetEnemy?.statuses || []
+        targetEnemy?.statuses || [],
+        targetEnemy?.type,
+        state.deck.length + state.hand.length + state.discardPile.length
       );
       
       // Calculate Shield granted by this card
@@ -253,7 +261,11 @@ export default function App() {
       if (newEnemies.length === 0) {
         // Victory!
         nextScreen = 'result';
-        rewardCards = generateRewardCards();
+        let rewardCount = 3;
+        if (state.artifacts.some((a: Artifact) => a.id === 'white_card')) {
+          rewardCount += 1;
+        }
+        rewardCards = generateRewardCards(rewardCount);
       }
 
       // Calculate Gold Reward
@@ -321,6 +333,11 @@ export default function App() {
 
         actualDamage = Math.max(0, actualDamage - prev.shield);
         
+        // Brave Shield
+        if (prev.artifacts.some(a => a.id === 'brave_shield')) {
+          actualDamage = Math.max(0, actualDamage - 1);
+        }
+
         let newHp = prev.hp - actualDamage;
         if (newHp <= 0) newHp = 0;
         
@@ -333,8 +350,13 @@ export default function App() {
         let newDeck = [...prev.deck];
         let newDiscardPile = [...prev.discardPile, ...prev.hand]; // Move leftovers to discard
 
-        // Draw 5 cards
-        for (let i = 0; i < 5; i++) {
+        // Draw cards
+        let targetDraw = 5;
+        if (prev.artifacts.some(a => a.id === 'devil_statue')) {
+          targetDraw -= 1;
+        }
+
+        for (let i = 0; i < targetDraw; i++) {
           if (newDeck.length === 0) {
             // Shuffle discard pile into deck
             newDeck = [...newDiscardPile].sort(() => Math.random() - 0.5);
@@ -405,11 +427,24 @@ export default function App() {
     setState((prev: GameState) => {
       const isBoss = prev.currentNodeId?.split('-')[1] === '14'; // depth 14 is boss
       
+      // Note: We don't have artifact rewards yet in this mock, 
+      // but let's assume we might get figure_eight_charm.
+      // For now, I'll just check if artifacts changed or manually check current ones.
+      
+      let boardSize = prev.boardSize;
+      let board = prev.board;
+      if (prev.artifacts.some((a: Artifact) => a.id === 'figure_eight_charm') && prev.boardSize === 7) {
+        boardSize = 8;
+        board = createEmptyBoard(8); // This clears board but artifact expansion usually happens between nodes
+      }
+
       if (isBoss) {
         // You beat the 15th node!
         return {
            ...prev,
            deck: [...prev.deck, card],
+           boardSize,
+           board,
            screen: 'gameover',
            rewardCards: [],
         };
@@ -417,6 +452,8 @@ export default function App() {
       return {
         ...prev,
         deck: [...prev.deck, card],
+        boardSize,
+        board,
         screen: 'dungeon',
         rewardCards: [],
       };

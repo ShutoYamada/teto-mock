@@ -67,8 +67,7 @@ export interface Artifact {
   name: string;
   rarity: ArtifactRarity;
   description: string;
-  effect: (state: GameState) => Partial<GameState>; // This might be too generic, but let's see
-  // For Brave Sword specifically, we might just need to check if it exists in state.artifacts
+  effect?: (state: GameState) => Partial<GameState>;
 }
 
 export type DungeonNodeType = 'battle' | 'boss' | 'event' | 'elite' | 'rest';
@@ -83,6 +82,7 @@ export interface DungeonNode {
 export interface GameState {
   screen: ScreenState;
   board: BoardState;
+  boardSize: number;
   
   // Deck & Hand
   deck: TetrominoCard[];

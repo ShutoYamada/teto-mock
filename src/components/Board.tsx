@@ -58,7 +58,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
     <div className="board-wrapper">
       <div
         className="board"
-        style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
+        style={{ gridTemplateColumns: `repeat(${board.length}, 1fr)` }}
       >
         {board.map((row, r) =>
           row.map((cell, c) => {

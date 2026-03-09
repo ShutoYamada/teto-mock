@@ -267,12 +267,12 @@ export function shuffle<T>(array: T[]): T[] {
   return arr;
 }
 
-export function generateRewardCards(): TetrominoCard[] {
+export function generateRewardCards(count: number = 3): TetrominoCard[] {
   const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein'];
   const rewards: TetrominoCard[] = [];
   
-  // Pick 3 random cards for drafting
-  for (let i = 0; i < 3; i++) {
+  // Pick X random cards for drafting
+  for (let i = 0; i < count; i++) {
     const type = types[Math.floor(Math.random() * types.length)];
     const def = TETROMINO_DEFS[type];
     rewards.push({
