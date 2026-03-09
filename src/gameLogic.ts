@@ -1,4 +1,4 @@
-import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType, Enemy, EnemyAction, GameState, EnemyStatus, Artifact } from './types';
+import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType, Enemy, EnemyAction, GameState, Status, Artifact } from './types';
 // GameState and EnemyStatus are used in type signatures.
 
 
@@ -179,7 +179,9 @@ export function calculateDamage(
   combo: number,
   borderCount: number = 0,
   stripeCount: number = 0,
-  artifacts: Artifact[] = []
+  artifacts: Artifact[] = [],
+  playerStatuses: Status[] = [],
+  targetEnemyStatuses: Status[] = []
 ): number {
   let damage = 0;
   if (card) {
@@ -200,7 +202,14 @@ export function calculateDamage(
     if (artifacts.some(a => a.id === 'brave_sword')) {
       damage += 1;
     }
+    
+    // Player Power Status
+    const power = playerStatuses.find(s => s.type === 'power');
+    if (power) {
+      damage += power.value;
+    }
   }
+  
   if (clearedCount > 0) {
     // Base line clear damage
     damage += clearedCount * 10;
@@ -212,6 +221,13 @@ export function calculateDamage(
     damage += borderCount * 5;
     damage += stripeCount * 5;
   }
+  
+  // Target Enemy Fallen Status (1.5x damage)
+  const fallen = targetEnemyStatuses.find(s => s.type === 'fallen');
+  if (fallen) {
+    damage = Math.floor(damage * 1.5);
+  }
+  
   return damage;
 }
 
@@ -318,7 +334,7 @@ export function decideNextAction(enemy: Enemy): Enemy {
   }
   
   // Apply Fury bonus to damage
-  const fury = enemy.statuses.find((s: EnemyStatus) => s.type === 'fury');
+  const fury = enemy.statuses.find((s: Status) => s.type === 'fury');
   if (fury && damage > 0) {
     damage += fury.value;
   }

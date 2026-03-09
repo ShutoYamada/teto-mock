@@ -30,10 +30,10 @@ export type BoardState = CellValue[][];
 export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover';
 export type TurnState = 'player' | 'enemy';
 
-export type EnemyStatusType = 'defense' | 'fury' | 'reflect' | 'fallen';
+export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power';
 
-export interface EnemyStatus {
-  type: EnemyStatusType;
+export interface Status {
+  type: StatusType;
   value: number;
 }
 
@@ -56,7 +56,7 @@ export interface Enemy {
     damage?: number;
     description: string;
   };
-  statuses: EnemyStatus[];
+  statuses: Status[];
   goldReward: number;
 }
 
@@ -96,6 +96,7 @@ export interface GameState {
   mp: number;
   maxMp: number;
   gold: number;
+  statuses: Status[];
   shield: number; // Applied armor preventing damage
   
   // Battle state

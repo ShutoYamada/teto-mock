@@ -38,8 +38,15 @@ export function BattleScreen({
                🛡️ シールド: {state.shield}
              </div>
           )}
-          <div className="stat-row" style={{ fontSize: '0.8rem', marginTop: '4px', color: '#aaa' }}>
+            <div className="stat-row" style={{ fontSize: '0.8rem', marginTop: '4px', color: '#aaa' }}>
             山札: {state.deck.length} | 捨て札: {state.discardPile.length}
+          </div>
+          <div className="player-statuses" style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+            {state.statuses.map((s, idx) => (
+              <div key={idx} className="status-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,224,0,0.2)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,224,0,0.4)' }}>
+                {s.type === 'power' ? '💪' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : '✨'}{s.value}
+              </div>
+            ))}
           </div>
         </div>
         
@@ -80,7 +87,7 @@ export function BattleScreen({
                 <div className="enemy-statuses" style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                   {enemy.statuses.map((s, idx) => (
                     <div key={idx} className="status-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: '4px' }}>
-                      {s.type === 'fury' ? '🔥' : s.type === 'defense' ? '🛡️' : s.type === 'reflect' ? '🪞' : '🥴'}{s.value}
+                      {s.type === 'fury' ? '🔥' : s.type === 'defense' ? '🛡️' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : '✨'}{s.value}
                     </div>
                   ))}
                 </div>

@@ -18,7 +18,7 @@ import {
   BOARD_SIZE,
   createArtifact,
 } from './gameLogic';
-import type { GameState, TetrominoCard, Enemy } from './types';
+import type { GameState, TetrominoCard, Enemy, Status } from './types';
 
 function initGame(): GameState {
   const deck = buildDeck();
@@ -34,6 +34,7 @@ function initGame(): GameState {
     mp: 5,
     maxMp: 5,
     gold: 0,
+    statuses: [],
     shield: 0,
     turn: 'player',
     combo: 0,
@@ -72,8 +73,6 @@ export default function App() {
       const nodeParts = nodeId.split('-');
       const depth = parseInt(nodeParts[1], 10);
       
-      const eHp = 40 + depth * 20; // Keep if needed for fallback, but getRandomEnemy uses its own ranges
-
       return {
         ...prev,
         screen: 'battle',
@@ -138,7 +137,18 @@ export default function App() {
         combo = 0; 
       }
 
-      const damage = calculateDamage(boardAfterPlace, selectedCard, clearedCount, combo, borderCount, stripeCount, state.artifacts);
+      const targetEnemy = state.enemies.find(e => e.id === state.targetEnemyId);
+      const damage = calculateDamage(
+        boardAfterPlace, 
+        selectedCard, 
+        clearedCount, 
+        combo, 
+        borderCount, 
+        stripeCount, 
+        state.artifacts,
+        state.statuses,
+        targetEnemy?.statuses || []
+      );
       
       // Calculate Shield granted by this card
       let addedShields = 0;
@@ -301,8 +311,15 @@ export default function App() {
         const enemyDamage = prev.enemies.reduce((acc: number, enemy: Enemy) => acc + enemy.nextAttack, 0);
         const totalDamage = spikeDamage + enemyDamage;
         
-        let actualDamage = totalDamage - prev.shield;
-        if (actualDamage < 0) actualDamage = 0;
+        let actualDamage = totalDamage;
+        
+        // Handle Player Fallen Status (1.5x damage taken)
+        const isPlayerFallen = prev.statuses.some(s => s.type === 'fallen');
+        if (isPlayerFallen) {
+          actualDamage = Math.floor(actualDamage * 1.5);
+        }
+
+        actualDamage = Math.max(0, actualDamage - prev.shield);
         
         let newHp = prev.hp - actualDamage;
         if (newHp <= 0) newHp = 0;
@@ -312,7 +329,7 @@ export default function App() {
         }
 
         // Replenish Hand (Target 5 draws)
-        let newHand = [];
+        let newHand: TetrominoCard[] = [];
         let newDeck = [...prev.deck];
         let newDiscardPile = [...prev.discardPile, ...prev.hand]; // Move leftovers to discard
 
@@ -328,30 +345,23 @@ export default function App() {
           }
         }
 
-        // Update enemy intents and process effects
-        // Execute enemy effects for the turn that JUST ended (the turn they just took)
-        // Actually, the intent describes what they DID. So we should have executed effects
-        // Or process them now. Let's process the effects of the enemies BEFORE we decide new intents.
-        
-        // Wait, the flow is:
-        // 1. Current Enemy Intent is executed (Damage + Effect)
-        // 2. Decide NEW Intent for the next turn.
-
-        // So let's re-organized handleTurnEnd:
+        // Handle Player Reflect Damage to all enemies
+        const playerReflect = prev.statuses.find(s => s.type === 'reflect');
         let processedEnemies = [...prev.enemies];
+        if (playerReflect && enemyDamage > 0) {
+          processedEnemies = processedEnemies.map(e => ({
+            ...e,
+            hp: Math.max(0, e.hp - playerReflect.value)
+          }));
+        }
 
-        processedEnemies.forEach(enemy => {
-           const template = (Object.values(ENEMY_TEMPLATES) as any[]).find(t => t.name === enemy.name);
-           // We should store which ACTION was selected in the enemy object or template lookup.
-           // For now, let's just look at the action name in the intent.
-           const action = template?.actions.find((a: any) => a.name === enemy.intent.actionName);
+        // Process enemy effects
+        processedEnemies.forEach((enemy, idx) => {
+           const template = Object.values(ENEMY_TEMPLATES).find(t => t.name === enemy.name);
+           const action = template?.actions.find(a => a.name === enemy.intent.actionName);
            if (action?.effect) {
               const result = action.effect(enemy, prev);
-              // Simple merge for enemy updates
-              const enemyIdx = processedEnemies.findIndex(e => e.id === enemy.id);
-              processedEnemies[enemyIdx] = { ...processedEnemies[enemyIdx], ...result as Partial<Enemy> };
-              // Simple merge for state updates (e.g. if we add player damage effect)
-              // stateMod = { ...stateMod, ...result as Partial<GameState> };
+              processedEnemies[idx] = { ...processedEnemies[idx], ...result as Partial<Enemy> };
            }
         });
 
@@ -361,13 +371,27 @@ export default function App() {
         // Decide NEXT intents
         processedEnemies = processedEnemies.map(e => decideNextAction(e));
 
+        // Decrement status turns for both player and enemies
+        const updateStatuses = (statuses: Status[]) => {
+          return statuses
+            .map(s => (s.type === 'fallen' ? { ...s, value: s.value - 1 } : s))
+            .filter(s => s.value > 0 || s.type !== 'fallen');
+        };
+
+        const newPlayerStatuses = updateStatuses(prev.statuses);
+        const newEnemiesWithUpdatedStatuses = processedEnemies.map(e => ({
+          ...e,
+          statuses: updateStatuses(e.statuses)
+        }));
+
         return {
           ...prev,
           hp: newHp,
           mp: prev.maxMp, // Restore MP at start of player turn
           shield: 0, // Armor disappears at start of your turn
           turn: 'player',
-          enemies: processedEnemies,
+          enemies: newEnemiesWithUpdatedStatuses,
+          statuses: newPlayerStatuses,
           hand: newHand,
           deck: newDeck,
           discardPile: newDiscardPile,
