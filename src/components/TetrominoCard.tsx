@@ -34,6 +34,9 @@ export function TetrominoCard({ card, isSelected, onClick }: TetrominoCardProps)
       <div className="card-type-label" style={{ color: card.color }}>
         {card.type}
       </div>
+      <div className="card-rarity-label" data-rarity={card.rarity}>
+        {card.rarity.toUpperCase()}
+      </div>
       <div
         className="card-preview"
         style={{

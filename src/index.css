@@ -445,6 +445,36 @@ body {
   opacity: 0.9;
 }
 
+.card-rarity-label {
+  font-size: 0.55rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  margin-top: -2px;
+  margin-bottom: 2px;
+}
+
+.card-rarity-label[data-rarity="default"] {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.card-rarity-label[data-rarity="common"] {
+  background: rgba(240, 240, 255, 0.2);
+  color: #f0f0ff;
+}
+
+.card-rarity-label[data-rarity="uncommon"] {
+  background: rgba(0, 255, 127, 0.2);
+  color: #00FF7F;
+}
+
+.card-rarity-label[data-rarity="rare"] {
+  background: rgba(200, 85, 255, 0.2);
+  color: #c855ff;
+}
+
 .card-preview {
   /* grid set inline */
 }

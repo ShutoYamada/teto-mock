@@ -1,6 +1,6 @@
 export type TetrominoType = DefaultTetrominoType | CustomTetrominoType; 
 export type DefaultTetrominoType = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
-export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo';
+export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo' | 'Jab';
 
 export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo';
 
@@ -14,7 +14,7 @@ export interface TetrominoCard {
   cost: number;
   attack: number;
   effectText?: string;
-  rarity: 'default' | 'common' | 'uncommon' | 'rare' | 'legendary';
+  rarity: 'default' | 'common' | 'uncommon' | 'rare';
 }
 
 export interface CellData {

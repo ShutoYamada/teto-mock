@@ -8,7 +8,7 @@ interface TetrominoDefinition {
   cost: number;
   attack: number;
   effectText?: string;
-  rarity: 'default' | 'common' | 'uncommon' | 'rare' | 'legendary';
+  rarity: 'default' | 'common' | 'uncommon' | 'rare';
 }
 export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinition> = {
   Sword: {
@@ -23,7 +23,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 1,
     attack: 2,
     effectText: "全マス剣ブロック(配置中、全基礎ダメ+1)",
-    rarity: "uncommon",
+    rarity: "common",
   },
   Cross: { // Cross
     shape: [
@@ -41,7 +41,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 1,
     attack: 4,
     effectText: "中心が爆弾ブロック(周囲破壊&全体10ダメ)",
-    rarity: "rare",
+    rarity: "common",
   },
   SquareBomb: {
     shape: [
@@ -59,7 +59,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 4,
     attack: 3,
     effectText: "全マス爆弾ブロック",
-    rarity: "legendary",
+    rarity: "rare",
   },
   Mana: {
     shape: [
@@ -75,7 +75,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 2,
     attack: 0,
     effectText: "中心がマナブロック(消滅時MP+1)",
-    rarity: "uncommon",
+    rarity: "common",
   },
   Shield: {
     shape: [
@@ -91,7 +91,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 1,
     attack: 0,
     effectText: "全マス盾ブロック(被ダメ-1)",
-    rarity: "uncommon",
+    rarity: "common",
   },
   Draw: {
     shape: [
@@ -125,7 +125,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 1,
     attack: 1,
     effectText: "トゲ、ドロー、トゲ(配置時引くが毎Turn自傷)",
-    rarity: "rare",
+    rarity: "common",
   },
   GoldVein: {
     shape: [
@@ -141,7 +141,7 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 1,
     attack: 2,
     effectText: "全マスゴールドブロック(消滅時Gold+5)",
-    rarity: "uncommon",
+    rarity: "common",
   },
   OneTwo: {
     shape: [
@@ -157,7 +157,23 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     cost: 1,
     attack: 4,
     effectText: "両端にコンボ加算ブロック(消滅時Combo+1)",
-    rarity: "uncommon",
+    rarity: "common",
+  },
+  Jab: {
+    shape: [
+      [true],
+      [true],
+    ],
+    blockTypes: [
+      ['combo'],
+      ['combo'],
+    ],
+    color: '#FFB6C1',
+    glowColor: 'rgba(255, 182, 193, 0.5)',
+    cost: 0,
+    attack: 1,
+    effectText: "全マスコンボ加算ブロック(消滅時Combo+1)",
+    rarity: "common",
   },
 }
 
@@ -284,7 +300,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(count: number = 3): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab'];
   const rewards: TetrominoCard[] = [];
   
   // Pick X random cards for drafting
