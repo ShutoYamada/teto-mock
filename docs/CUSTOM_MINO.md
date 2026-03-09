@@ -8,17 +8,18 @@
 
 ### 攻撃系
 
-- [十字カード](./CUSTOM_MINO/Cross.md)
-- [スクエアボムカード](./CUSTOM_MINO/SquareBomb.md)
+- [十字カード](./CUSTOM_MINO/2_Cross.md)
+- [スクエアボムカード](./CUSTOM_MINO/8_SquareBomb.md)
+- [ワン・ツー](./CUSTOM_MINO/9_OneTwo.md)
 
 ### 防御系
 
-- [盾カード](./CUSTOM_MINO/Shield.md)
+- [盾カード](./CUSTOM_MINO/3_Shield.md)
 
 ### 補助系
 
-- [マナカード](./CUSTOM_MINO/Mana.md)
-- [剣カード](./CUSTOM_MINO/Sword.md)
-- [ドローカード](./CUSTOM_MINO/Draw.md)
-- [手痛い増資](./CUSTOM_MINO/PainfulInvestment.md)
-- [金鉱脈](./CUSTOM_MINO/GoldVein.md)
+- [マナカード](./CUSTOM_MINO/5_Mana.md)
+- [剣カード](./CUSTOM_MINO/1_Sword.md)
+- [ドローカード](./CUSTOM_MINO/4_Draw.md)
+- [手痛い増資](./CUSTOM_MINO/7_PainfulInvestment.md)
+- [金鉱脈](./CUSTOM_MINO/6_GoldVein.md)

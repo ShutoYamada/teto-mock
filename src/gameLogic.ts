@@ -658,6 +658,14 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,
+  },
+  champion_glove: {
+    name: 'チャンピオンのグローブ',
+    rarity: 'uncommon',
+    description: 'コンボブロック消滅時のコンボ加算時にさらに+1する',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   }
 };
 

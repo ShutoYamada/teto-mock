@@ -50,7 +50,8 @@ function initGame(): GameState {
     clearedLines: 0,
     artifacts: [
       createArtifact('brave_sword'),
-      createArtifact('abacus')
+      createArtifact('abacus'),
+      createArtifact('champion_glove')
     ], // Initially give artifacts for testing
     rewardArtifact: null,
   };
@@ -130,7 +131,11 @@ export default function App() {
       
       let combo = state.combo;
       if (clearedCount > 0) {
-        combo += 1 + comboCount;
+        let addedCombo = 1 + comboCount;
+        if (comboCount > 0 && state.artifacts.some((a: Artifact) => a.id === 'champion_glove')) {
+          addedCombo += 1;
+        }
+        combo += addedCombo;
         const cleared = new Set<string>();
         for (let r = 0; r < BOARD_SIZE; r++) {
           for (let c = 0; c < BOARD_SIZE; c++) {
@@ -556,7 +561,7 @@ export default function App() {
             <div className="artifact-list">
               {state.artifacts.map(a => (
                 <span key={a.id} className="artifact-icon" title={`${a.name}: ${a.description}`}>
-                  {a.id === 'brave_sword' ? '⚔️' : a.id === 'abacus' ? '🧮' : '💎'}
+                  {a.id === 'brave_sword' ? '⚔️' : a.id === 'abacus' ? '🧮' : a.id === 'champion_glove' ? '🥊' : '💎'}
                 </span>
               ))}
             </div>
