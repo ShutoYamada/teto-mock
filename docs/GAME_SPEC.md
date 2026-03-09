@@ -27,7 +27,7 @@
 
 ### 敵ユニット
 
-- 詳細はENEMY_SPEC.mdを参照
+- 詳細は[ENEMY/\_SPEC.md](./ENEMY/_SPEC.md)を参照
 
 ### ダンジョン進行
 
