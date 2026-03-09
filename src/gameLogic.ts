@@ -58,6 +58,7 @@ export interface ClearResult {
   goldCount: number;
   borderCount: number;
   stripeCount: number;
+  comboCount: number;
 }
 
 export function clearLines(board: BoardState): ClearResult {
@@ -76,7 +77,7 @@ export function clearLines(board: BoardState): ClearResult {
 
   const clearedCount = fullRows.size + fullCols.size;
   if (clearedCount === 0) {
-    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0 };
+    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0 };
   }
 
   const cellsToClear = new Set<string>();
@@ -96,6 +97,7 @@ export function clearLines(board: BoardState): ClearResult {
   let goldCount = 0;
   let borderCount = 0;
   let stripeCount = 0;
+  let comboCount = 0;
   
   let newlyAddedBombs = true;
   while (newlyAddedBombs) {
@@ -146,6 +148,7 @@ export function clearLines(board: BoardState): ClearResult {
       if (cellData.blockType === 'gold') goldCount++;
       if (cellData.blockType === 'border' && fullRows.has(r)) borderCount++;
       if (cellData.blockType === 'stripe' && fullCols.has(c)) stripeCount++;
+      if (cellData.blockType === 'combo') comboCount++;
     }
   });
 
@@ -157,7 +160,7 @@ export function clearLines(board: BoardState): ClearResult {
     })
   );
 
-  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount };
+  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount };
 }
 
 export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {

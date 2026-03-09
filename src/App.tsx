@@ -126,11 +126,11 @@ export default function App() {
 
       const boardAfterPlace = placeCard(state.board, selectedCard, row, col);
 
-      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount } = clearLines(boardAfterPlace);
+      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount } = clearLines(boardAfterPlace);
       
       let combo = state.combo;
       if (clearedCount > 0) {
-        combo += 1;
+        combo += 1 + comboCount;
         const cleared = new Set<string>();
         for (let r = 0; r < BOARD_SIZE; r++) {
           for (let c = 0; c < BOARD_SIZE; c++) {

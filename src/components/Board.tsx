@@ -80,8 +80,9 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                   const bType = selectedCard.blockTypes ? selectedCard.blockTypes[rr][rc] : 'normal';
                   previewBlockIcon = bType === 'bomb' ? '💣' :
                                      bType === 'sword' ? '🗡️' :
-                                     bType === 'shield' ? '🛡️' :
-                                     bType === 'mana' ? '💧' : null;
+                                      bType === 'shield' ? '🛡️' :
+                                      bType === 'combo' ? '➕' :
+                                      bType === 'mana' ? '💧' : null;
                }
             }
             
@@ -94,6 +95,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                               blockType === 'border' ? '➖' :
                               blockType === 'stripe' ? '｜' :
                               blockType === 'trash' ? '🗑️' :
+                              blockType === 'combo' ? '➕' :
                               blockType === 'mana' ? '💧' : previewBlockIcon;
 
             let cellClass = 'board-cell';

@@ -143,6 +143,22 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "全マスゴールドブロック(消滅時Gold+5)",
     rarity: "uncommon",
   },
+  OneTwo: {
+    shape: [
+      [false, true, true],
+      [true,  true, false],
+    ],
+    blockTypes: [
+      ['normal', 'normal', 'combo'],
+      ['combo', 'normal', 'normal'],
+    ],
+    color: '#FF69B4',
+    glowColor: 'rgba(255, 105, 180, 0.5)',
+    cost: 1,
+    attack: 4,
+    effectText: "両端にコンボ加算ブロック(消滅時Combo+1)",
+    rarity: "uncommon",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
@@ -268,7 +284,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(count: number = 3): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo'];
   const rewards: TetrominoCard[] = [];
   
   // Pick X random cards for drafting
