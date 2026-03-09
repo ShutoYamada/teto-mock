@@ -798,6 +798,112 @@ body {
   gap: 24px;
 }
 
+/* ── Artifact Reward ────────────────────────────────────────── */
+.artifact-reward-section {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 32px;
+  animation: slide-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.artifact-reward-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.artifact-reward-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.artifact-reward-info {
+  text-align: center;
+}
+
+.artifact-rarity-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  letter-spacing: 0.1em;
+}
+
+.artifact-rarity-tag[data-rarity="common"] { background: #888; color: #fff; }
+.artifact-rarity-tag[data-rarity="uncommon"] { background: #2ecc71; color: #fff; }
+.artifact-rarity-tag[data-rarity="rare"] { background: #3498db; color: #fff; }
+.artifact-rarity-tag[data-rarity="legendary"] { background: #f1c40f; color: #000; }
+
+.artifact-reward-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.artifact-reward-description {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.artifact-reward-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.artifact-action-btn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.artifact-action-btn.pick-up {
+  background: var(--accent);
+  color: #fff;
+}
+
+.artifact-action-btn.pick-up:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 15px var(--accent);
+  transform: translateY(-2px);
+}
+
+.artifact-action-btn.leave {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.artifact-action-btn.leave:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
 .reward-card-wrap {
   display: flex;
   flex-direction: column;

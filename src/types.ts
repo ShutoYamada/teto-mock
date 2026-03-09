@@ -68,6 +68,9 @@ export interface Artifact {
   rarity: ArtifactRarity;
   description: string;
   effect?: (state: GameState) => Partial<GameState>;
+  isEliteDrop: boolean;
+  isShopSale: boolean;
+  isEventReward: boolean;
 }
 
 export type DungeonNodeType = 'battle' | 'boss' | 'event' | 'elite' | 'rest';
@@ -114,6 +117,7 @@ export interface GameState {
   
   // Result state
   rewardCards: TetrominoCard[];
+  rewardArtifact: Artifact | null;
   
   score: number;
   clearedLines: number;

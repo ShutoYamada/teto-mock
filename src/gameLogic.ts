@@ -595,42 +595,66 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     rarity: 'uncommon',
     description: 'すべてのミノカードの基礎攻撃力が1上昇する',
     effect: (state: GameState) => state, // Not used in calculation yet, handled directly in calculateDamage
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   },
   abacus: {
     name: 'そろばん',
     rarity: 'common',
     description: '戦闘終了後に獲得するGoldが+10%される(小数点以下は切り捨て)',
     effect: (state: GameState) => state,
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   },
   brave_shield: {
     name: '勇者の盾',
     rarity: 'uncommon',
     description: '被ダメージが-1される',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   },
   white_card: {
     name: '白紙のカード',
     rarity: 'common',
     description: '戦闘勝利後の報酬選択時に選択可能なカードの候補が+1される',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   },
   elite_killer: {
     name: 'エリートキラー',
     rarity: 'uncommon',
     description: 'エリートモンスターに対して与えるダメージが+1される',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   },
   devil_statue: {
     name: '悪魔の像',
     rarity: 'uncommon',
     description: '戦闘開始時の手札枚数が-1され、すべてのミノカードの基礎攻撃力が+1される',
+    isEliteDrop: false,
+    isShopSale: false,
+    isEventReward: false,
   },
   seven_card: {
     name: '7カード',
     rarity: 'rare',
     description: 'デッキのカード枚数7枚ごとにすべてのミノカードの基礎攻撃力が+1される',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   },
   figure_eight_charm: {
     name: '8の字のお守り',
     rarity: 'rare',
     description: '盤面の縦横が1マスずつ増え、基礎攻撃力と行列攻撃力が+1される',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   }
 };
 
@@ -641,4 +665,40 @@ export function createArtifact(id: string): Artifact {
     id,
     ...def
   };
+}
+
+export function getRandomArtifactByRarity(stage: number, playerArtifacts: Artifact[]): Artifact | null {
+  const ownedIds = new Set(playerArtifacts.map(a => a.id));
+  const pool = Object.entries(ARTIFACT_DEFS)
+    .filter(([id, def]) => def.isEliteDrop && !ownedIds.has(id))
+    .map(([id, def]) => ({ id, ...def }));
+
+  if (pool.length === 0) return null;
+
+  // Determine rarity based on stage
+  const rand = Math.random() * 100;
+  let targetRarity: 'common' | 'uncommon' | 'rare';
+
+  if (stage === 1) {
+    if (rand < 75) targetRarity = 'common';
+    else if (rand < 95) targetRarity = 'uncommon';
+    else targetRarity = 'rare';
+  } else if (stage === 2) {
+    if (rand < 65) targetRarity = 'common';
+    else if (rand < 85) targetRarity = 'uncommon';
+    else targetRarity = 'rare';
+  } else {
+    // Stage 3 and above
+    if (rand < 45) targetRarity = 'common';
+    else if (rand < 80) targetRarity = 'uncommon';
+    else targetRarity = 'rare';
+  }
+
+  const rarityPool = pool.filter(a => a.rarity === targetRarity);
+  
+  // If pool for target rarity is empty, fallback to any available
+  const finalPool = rarityPool.length > 0 ? rarityPool : pool;
+  const selected = finalPool[Math.floor(Math.random() * finalPool.length)];
+
+  return selected;
 }

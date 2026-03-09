@@ -17,6 +17,7 @@ import {
   ENEMY_TEMPLATES,
   BOARD_SIZE,
   createArtifact,
+  getRandomArtifactByRarity,
 } from './gameLogic';
 import type { GameState, TetrominoCard, Enemy, Status, Artifact, BoardState } from './types';
 
@@ -51,6 +52,7 @@ function initGame(): GameState {
       createArtifact('brave_sword'),
       createArtifact('abacus')
     ], // Initially give artifacts for testing
+    rewardArtifact: null,
   };
 }
 
@@ -268,6 +270,12 @@ export default function App() {
           rewardCount += 1;
         }
         rewardCards = generateRewardCards(rewardCount);
+
+        // Elite Reward
+        const hadElite = state.enemies.some(e => e.type === 'elite');
+        if (hadElite) {
+          rewardArtifact = getRandomArtifactByRarity(state.stage, state.artifacts);
+        }
       }
 
       // Calculate Gold Reward
@@ -430,6 +438,17 @@ export default function App() {
     }, 1000); 
   }, []);
 
+  const handleArtifactSelect = useCallback((artifact: Artifact | null) => {
+    setState((prev: GameState) => {
+      if (!artifact) return { ...prev, rewardArtifact: null };
+      return {
+        ...prev,
+        artifacts: [...prev.artifacts, artifact],
+        rewardArtifact: null,
+      };
+    });
+  }, []);
+
   const handleRewardSelect = useCallback((card: TetrominoCard) => {
     setState((prev: GameState) => {
       const isBoss = prev.currentNodeId?.split('-')[1] === '14'; // depth 14 is boss
@@ -584,7 +603,11 @@ export default function App() {
       )}
 
       {state.screen === 'result' && (
-        <ResultScreen state={state} onSelectCard={handleRewardSelect} />
+        <ResultScreen 
+          state={state} 
+          onSelectCard={handleRewardSelect} 
+          onSelectArtifact={handleArtifactSelect}
+        />
       )}
     </div>
   );
