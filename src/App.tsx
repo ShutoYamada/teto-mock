@@ -13,6 +13,7 @@ import {
   rotateShape,
   rotateBlockTypes,
   getRandomEnemy,
+  getEnemyEncounter,
   decideNextAction,
   ENEMY_TEMPLATES,
   BOARD_SIZE,
@@ -100,9 +101,7 @@ export default function App() {
         combo: 0,
         currentNodeId: nodeId,
         stage: depth + 1,
-        enemies: [
-          getRandomEnemy(depth + 1, depth === 14 ? 'boss' : (depth % 3 === 0 && depth > 0 ? 'elite' : 'normal'))
-        ],
+        enemies: getEnemyEncounter(depth + 1, depth === 14 ? 'boss' : (depth % 3 === 0 && depth > 0 ? 'elite' : 'normal')),
         targetEnemyId: null, // Will be set by the getRandomEnemy result if we wanted, but let's just pick first
       };
     });
@@ -131,7 +130,7 @@ export default function App() {
 
       const boardAfterPlace = placeCard(state.board, selectedCard, row, col);
 
-      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount } = clearLines(boardAfterPlace);
+      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount } = clearLines(boardAfterPlace);
       
       let combo = state.combo;
       if (clearedCount > 0) {
@@ -219,7 +218,7 @@ export default function App() {
 
       let newEnemies = state.enemies.map((e: Enemy) => {
         let enemyDamage = bombCount * 10;
-        if (e.id === state.targetEnemyId) {
+        if (e.id === state.targetEnemyId || bowCount > 0) {
            enemyDamage += damage;
         }
         
@@ -270,6 +269,7 @@ export default function App() {
       
       let nextScreen = state.screen;
       let rewardCards: TetrominoCard[] = [];
+      let rewardArtifact: Artifact | null = null;
       
       if (newEnemies.length === 0) {
         // Victory!
@@ -318,6 +318,7 @@ export default function App() {
         score: newScore,
         clearedLines: newClearedLines,
         rewardCards,
+        rewardArtifact,
         gold: state.gold + earnedGold,
         hp: Math.max(0, state.hp - reflectDamage),
       });
@@ -400,13 +401,20 @@ export default function App() {
 
         // Process enemy effects
         let currentBoard = prev.board;
+        let currentGold = prev.gold;
         processedEnemies.forEach((enemy, idx) => {
            const template = Object.values(ENEMY_TEMPLATES).find(t => t.name === enemy.name);
            const action = template?.actions.find(a => a.name === enemy.intent.actionName);
            if (action?.effect) {
-              const result = action.effect(enemy, { ...prev, board: currentBoard });
+              const result = action.effect(enemy, { ...prev, board: currentBoard, gold: currentGold, enemies: processedEnemies });
               if ('board' in result) {
                  currentBoard = result.board as BoardState;
+              }
+              if ('gold' in result) {
+                currentGold = result.gold as number;
+              }
+              if ('enemies' in result) {
+                processedEnemies = result.enemies as Enemy[];
               }
               processedEnemies[idx] = { ...processedEnemies[idx], ...result as Partial<Enemy> };
            }
@@ -436,6 +444,7 @@ export default function App() {
           hp: newHp,
           mp: prev.maxMp, // Restore MP at start of player turn
           board: currentBoard,
+          gold: currentGold,
           shield: 0, // Armor disappears at start of your turn
           turn: 'player',
           enemies: newEnemiesWithUpdatedStatuses,

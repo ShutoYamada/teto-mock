@@ -59,6 +59,7 @@ export interface ClearResult {
   borderCount: number;
   stripeCount: number;
   comboCount: number;
+  bowCount: number;
 }
 
 export function clearLines(board: BoardState): ClearResult {
@@ -77,7 +78,7 @@ export function clearLines(board: BoardState): ClearResult {
 
   const clearedCount = fullRows.size + fullCols.size;
   if (clearedCount === 0) {
-    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0 };
+    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0, bowCount: 0 };
   }
 
   const cellsToClear = new Set<string>();
@@ -98,6 +99,7 @@ export function clearLines(board: BoardState): ClearResult {
   let borderCount = 0;
   let stripeCount = 0;
   let comboCount = 0;
+  let bowCount = 0;
   
   let newlyAddedBombs = true;
   while (newlyAddedBombs) {
@@ -139,6 +141,7 @@ export function clearLines(board: BoardState): ClearResult {
   goldCount = 0;
   borderCount = 0;
   stripeCount = 0;
+  bowCount = 0;
   cellsToClear.forEach((pos) => {
     const [r, c] = pos.split(',').map(Number);
     const cellData = board[r][c];
@@ -149,6 +152,7 @@ export function clearLines(board: BoardState): ClearResult {
       if (cellData.blockType === 'border' && fullRows.has(r)) borderCount++;
       if (cellData.blockType === 'stripe' && fullCols.has(c)) stripeCount++;
       if (cellData.blockType === 'combo') comboCount++;
+      if (cellData.blockType === 'bow' && (fullRows.has(r) || fullCols.has(c))) bowCount++;
     }
   });
 
@@ -160,7 +164,7 @@ export function clearLines(board: BoardState): ClearResult {
     })
   );
 
-  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount };
+  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount };
 }
 
 export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
@@ -411,6 +415,57 @@ export const ENEMY_TEMPLATES: Record<string, {
         }
       }
     ]
+  },
+  pirate: {
+    name: '海賊',
+    type: 'normal',
+    hpRange: [65, 65],
+    goldReward: 30,
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに7～12ダメージを与える',
+        damageRange: [7, 12],
+      },
+      {
+        name: '盗む',
+        description: '3ダメージを与え、プレイヤーの所持ゴールドを10G奪う',
+        damageRange: [3, 3],
+        effect: (_enemy: Enemy, state: GameState) => {
+          return { gold: Math.max(0, state.gold - 10) };
+        }
+      }
+    ]
+  },
+  captain: {
+    name: 'キャプテン',
+    type: 'elite',
+    hpRange: [100, 100],
+    goldReward: 100,
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに10ダメージを与える',
+        damageRange: [10, 10],
+      },
+      {
+        name: '号令',
+        description: '存在する海賊に憤怒(2)を付与する',
+        effect: (_enemy: Enemy, state: GameState) => {
+          const newEnemies = state.enemies.map(e => {
+            if (e.name === '海賊') {
+              const statuses = [...e.statuses];
+              const fury = statuses.find(s => s.type === 'fury');
+              if (fury) fury.value += 2;
+              else statuses.push({ type: 'fury', value: 2 });
+              return { ...e, statuses };
+            }
+            return e;
+          });
+          return { enemies: newEnemies };
+        }
+      }
+    ]
   }
 };
 
@@ -420,11 +475,17 @@ export function getRandomEnemy(stage: number, type: 'normal' | 'elite' | 'boss')
   // Filter by stage
   if (type === 'normal') {
     if (stage === 1 || stage === 2) {
-      // Slime and Goblin
+      // Slime, Goblin, Pirate
     } else {
-      templates = templates.filter(t => t.name !== 'ゴブリン');
+      templates = templates.filter(t => t.name !== 'ゴブリン' && t.name !== '海賊');
     }
   }
+  
+  // Extra filter for Captain (usually spawned via special encounter)
+  if (type === 'elite') {
+    templates = templates.filter(t => t.name !== 'キャプテン');
+  }
+
   const template = templates[Math.floor(Math.random() * templates.length)];
   
   const hp = template.hpRange[0] + Math.floor(Math.random() * (template.hpRange[1] - template.hpRange[0] + 1));
@@ -460,6 +521,10 @@ export function decideNextAction(enemy: Enemy): Enemy {
     action = rand < 50 ? template.actions[0] : template.actions[1];
   } else if (enemy.name === 'ゴブリン') {
     action = rand < 50 ? template.actions[0] : template.actions[1];
+  } else if (enemy.name === '海賊') {
+    action = rand < 65 ? template.actions[0] : template.actions[1];
+  } else if (enemy.name === 'キャプテン') {
+    action = rand < 65 ? template.actions[0] : template.actions[1];
   } else {
     action = template.actions[0];
   }
@@ -590,6 +655,43 @@ export function generateDungeonMap(): DungeonNode[] {
   }
 
   return map;
+}
+
+export function getEnemyEncounter(stage: number, type: 'normal' | 'elite' | 'boss'): Enemy[] {
+  if (type === 'elite' && stage === 2) {
+    // Special Boss-like elite for stage 2: Captain + 2 Pirates
+    const captainTemplate = ENEMY_TEMPLATES.captain;
+    const pirateTemplate = ENEMY_TEMPLATES.pirate;
+    
+    const captain: Enemy = {
+      id: `enemy-captain-${Math.random().toString(36).substr(2, 9)}`,
+      name: captainTemplate.name,
+      type: captainTemplate.type,
+      hp: captainTemplate.hpRange[0],
+      maxHp: captainTemplate.hpRange[0],
+      goldReward: captainTemplate.goldReward,
+      nextAttack: 0,
+      statuses: [],
+      intent: { actionName: '待機', description: '様子をうかがっている' }
+    };
+
+    const pirates = [1, 2].map(i => ({
+      id: `enemy-pirate-${i}-${Math.random().toString(36).substr(2, 9)}`,
+      name: pirateTemplate.name,
+      type: pirateTemplate.type,
+      hp: pirateTemplate.hpRange[0],
+      maxHp: pirateTemplate.hpRange[0],
+      goldReward: pirateTemplate.goldReward,
+      nextAttack: 0,
+      statuses: [],
+      intent: { actionName: '待機', description: '様子をうかがっている' }
+    }));
+
+    return [captain, ...pirates].map(e => decideNextAction(e));
+  }
+
+  // Default: single random enemy
+  return [getRandomEnemy(stage, type)];
 }
 
 export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {

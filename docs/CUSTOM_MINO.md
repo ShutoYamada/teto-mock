@@ -10,7 +10,8 @@
 
 - [十字カード](./CUSTOM_MINO/2_Cross.md)
 - [スクエアボムカード](./CUSTOM_MINO/8_SquareBomb.md)
-- [ワン・ツー](./CUSTOM_MINO/9_OneTwo.md)
+- [ジャブ](./CUSTOM_MINO/10_Jab.md)
+- [弓](./CUSTOM_MINO/11_Bow.md)
 
 ### 防御系
 
