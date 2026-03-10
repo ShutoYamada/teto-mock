@@ -9,6 +9,7 @@ interface BattleScreenProps {
   onCellClick: (row: number, col: number) => void;
   onCardClick: (id: string) => void;
   onTurnEnd: () => void;
+  onOpenPile: (type: 'deck' | 'discard' | 'exile') => void;
   clearedCells: Set<string>;
   flashDamage: boolean;
   damageAmount: number;
@@ -20,6 +21,7 @@ export function BattleScreen({
   onCellClick,
   onCardClick,
   onTurnEnd,
+  onOpenPile,
   onTargetClick,
   clearedCells,
   flashDamage,
@@ -39,7 +41,9 @@ export function BattleScreen({
              </div>
           )}
             <div className="stat-row" style={{ fontSize: '0.8rem', marginTop: '4px', color: '#aaa' }}>
-            山札: {state.deck.length} | 捨て札: {state.discardPile.length} | 除外: {state.exilePile.length}
+            <span className="pile-link" onClick={() => onOpenPile('deck')}>山札: {state.deck.length}</span> | 
+            <span className="pile-link" onClick={() => onOpenPile('discard')}> 捨て札: {state.discardPile.length}</span> | 
+            <span className="pile-link" onClick={() => onOpenPile('exile')}> 除外: {state.exilePile.length}</span>
           </div>
           <div className="player-statuses" style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
             {state.statuses.map((s, idx) => (

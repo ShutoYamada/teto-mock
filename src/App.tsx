@@ -64,6 +64,7 @@ export default function App() {
   const [flashDamage, setFlashDamage] = useState(false);
   const [recentDamage, setRecentDamage] = useState(0);
   const [showDeckModal, setShowDeckModal] = useState(false);
+  const [modalType, setModalType] = useState<'deck' | 'discard' | 'exile' | null>(null);
 
   const selectedCard: TetrominoCard | null =
     state.hand.find((c: TetrominoCard) => c.id === state.selectedCardId) ?? null;
@@ -595,7 +596,7 @@ export default function App() {
       )}
 
       {state.screen === 'dungeon' && (
-        <DungeonScreen state={state} onEnterNode={startBattle} onOpenDeck={() => setShowDeckModal(true)} />
+        <DungeonScreen state={state} onEnterNode={startBattle} onOpenDeck={() => { setModalType('deck'); setShowDeckModal(true); }} />
       )}
 
       {state.screen === 'battle' && (
@@ -605,6 +606,7 @@ export default function App() {
           onCellClick={handleCellClick}
           onCardClick={handleCardClick}
           onTurnEnd={handleTurnEnd}
+          onOpenPile={(type) => { setModalType(type); setShowDeckModal(true); }}
           onTargetClick={(id) => setState(prev => ({ ...prev, targetEnemyId: id }))}
           clearedCells={clearedCells}
           flashDamage={flashDamage}
@@ -621,14 +623,17 @@ export default function App() {
       )}
 
       {showDeckModal && (
-        <div className="modal-overlay" onClick={() => setShowDeckModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowDeckModal(false); setModalType(null); }}>
           <div className="modal-panel" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">デッキ一覧 ({state.deck.length}枚)</h2>
-              <button className="modal-close" onClick={() => setShowDeckModal(false)}>×</button>
+              <h2 className="modal-title">
+                {modalType === 'deck' ? '山札一覧' : modalType === 'discard' ? '捨て札一覧' : '除外札一覧'} 
+                ({(modalType === 'deck' ? state.deck : modalType === 'discard' ? state.discardPile : state.exilePile).length}枚)
+              </h2>
+              <button className="modal-close" onClick={() => { setShowDeckModal(false); setModalType(null); }}>×</button>
             </div>
             <div className="modal-content deck-grid">
-              {state.deck.map((card: TetrominoCard, idx: number) => (
+              {(modalType === 'deck' ? state.deck : modalType === 'discard' ? state.discardPile : state.exilePile).map((card: TetrominoCard, idx: number) => (
                 <div key={`${card.id}-${idx}`} className="deck-card-item">
                   <div className="tetromino-card" style={{ cursor: 'default' }}>
                     <div className="card-stat-attack">{card.attack}</div>

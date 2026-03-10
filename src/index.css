@@ -1033,3 +1033,13 @@ body {
   color: #aaa;
   font-family: monospace;
 }
+
+.pile-link {
+  cursor: pointer;
+  transition: color 0.2s, text-decoration 0.2s;
+}
+
+.pile-link:hover {
+  color: #FFD700;
+  text-decoration: underline;
+}
