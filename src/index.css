@@ -685,6 +685,7 @@ body {
 .dungeon-status {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 24px;
   font-size: 1.1rem;
   font-weight: bold;
@@ -693,6 +694,92 @@ body {
   padding: 12px 32px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
+}
+
+.deck-view-btn {
+  background: rgba(200, 85, 255, 0.2);
+  border: 1px solid var(--accent);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.deck-view-btn:hover {
+  background: rgba(200, 85, 255, 0.4);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+/* ── Modal ──────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-panel {
+  background: #111125;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  font-size: 1.4rem;
+  background: linear-gradient(135deg, #c855ff 0%, #00d9ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #fff;
+}
+
+.modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 20px;
+  justify-items: center;
+}
+
+.deck-card-item {
+  transform: scale(0.9);
 }
 
 /* ── Battle HUD ───────────────────────────────────────────── */

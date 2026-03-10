@@ -30,6 +30,7 @@ function initGame(): GameState {
     deck,
     hand: [],
     discardPile: [],
+    exilePile: [],
     selectedCardId: null,
     hp: 50,
     maxHp: 50,
@@ -62,6 +63,7 @@ export default function App() {
   const [clearedCells, setClearedCells] = useState<Set<string>>(new Set());
   const [flashDamage, setFlashDamage] = useState(false);
   const [recentDamage, setRecentDamage] = useState(0);
+  const [showDeckModal, setShowDeckModal] = useState(false);
 
   const selectedCard: TetrominoCard | null =
     state.hand.find((c: TetrominoCard) => c.id === state.selectedCardId) ?? null;
@@ -89,6 +91,7 @@ export default function App() {
         hand,
         deck,
         discardPile: [],
+        exilePile: [],
         hp: prev.hp,
         mp: prev.maxMp, // Fully restore MP at battle start
         shield: 0,
@@ -301,8 +304,10 @@ export default function App() {
         ...state,
         screen: nextScreen,
         board: newBoard,
-        hand: newHand,
-        discardPile: newDiscardPile,
+        hand: newEnemies.length === 0 ? [] : newHand,
+        discardPile: newEnemies.length === 0 ? [] : newDiscardPile,
+        exilePile: newEnemies.length === 0 ? [] : state.exilePile,
+        deck: newEnemies.length === 0 ? [...state.deck, ...newHand, ...newDiscardPile, ...state.exilePile] : state.deck,
         selectedCardId: null,
         mp: newMp,
         shield: newShield,
@@ -590,7 +595,7 @@ export default function App() {
       )}
 
       {state.screen === 'dungeon' && (
-        <DungeonScreen state={state} onEnterNode={startBattle} />
+        <DungeonScreen state={state} onEnterNode={startBattle} onOpenDeck={() => setShowDeckModal(true)} />
       )}
 
       {state.screen === 'battle' && (
@@ -613,6 +618,44 @@ export default function App() {
           onSelectCard={handleRewardSelect} 
           onSelectArtifact={handleArtifactSelect}
         />
+      )}
+
+      {showDeckModal && (
+        <div className="modal-overlay" onClick={() => setShowDeckModal(false)}>
+          <div className="modal-panel" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">デッキ一覧 ({state.deck.length}枚)</h2>
+              <button className="modal-close" onClick={() => setShowDeckModal(false)}>×</button>
+            </div>
+            <div className="modal-content deck-grid">
+              {state.deck.map((card: TetrominoCard, idx: number) => (
+                <div key={`${card.id}-${idx}`} className="deck-card-item">
+                  <div className="tetromino-card" style={{ cursor: 'default' }}>
+                    <div className="card-stat-attack">{card.attack}</div>
+                    <div className="card-stat-cost">{card.cost}</div>
+                    <div className="card-type-label">{card.type}</div>
+                    <div className="card-rarity-label" data-rarity={card.rarity}>{card.rarity}</div>
+                    <div className="card-preview" style={{
+                      display: 'grid',
+                      gridTemplateRows: `repeat(${card.shape.length}, 1fr)`,
+                      gridTemplateColumns: `repeat(${card.shape[0].length}, 1fr)`,
+                      gap: '2px'
+                    }}>
+                      {card.shape.map((row: boolean[], r: number) => row.map((cell: boolean, c: number) => (
+                        <div key={`${r}-${c}`} className="preview-cell" style={{
+                          width: '10px',
+                          height: '10px',
+                          backgroundColor: cell ? card.color : 'transparent',
+                          boxShadow: cell ? `0 0 5px ${card.glowColor}` : 'none'
+                        }} />
+                      )))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

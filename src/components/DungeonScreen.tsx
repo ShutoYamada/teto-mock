@@ -4,9 +4,10 @@ import { GameState, DungeonNode } from '../types';
 interface DungeonScreenProps {
   state: GameState;
   onEnterNode: (nodeId: string) => void;
+  onOpenDeck: () => void;
 }
 
-export function DungeonScreen({ state, onEnterNode }: DungeonScreenProps) {
+export function DungeonScreen({ state, onEnterNode, onOpenDeck }: DungeonScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Group nodes by depth
@@ -27,8 +28,8 @@ export function DungeonScreen({ state, onEnterNode }: DungeonScreenProps) {
     
   const targetDepth = currentDepth + 1;
   const validNextNodes = state.currentNodeId
-    ? state.dungeonMap.find(n => n.id === state.currentNodeId)?.nextNodes || []
-    : mapByDepth[0]?.map(n => n.id) || [];
+    ? state.dungeonMap.find((n: DungeonNode) => n.id === state.currentNodeId)?.nextNodes || []
+    : mapByDepth[0]?.map((n: DungeonNode) => n.id) || [];
 
   // Scroll to bottom on load to show current progression
   useEffect(() => {
@@ -60,7 +61,7 @@ export function DungeonScreen({ state, onEnterNode }: DungeonScreenProps) {
               <div key={depth} className="dungeon-depth-row">
                 <div className="depth-label">Depth {depth}</div>
                 <div className="depth-nodes">
-                  {depthNodes.map(node => {
+                  {depthNodes.map((node: DungeonNode) => {
                     const isSelectable = depth === targetDepth && validNextNodes.includes(node.id);
                     const isCleared = depth <= currentDepth;
                     const isCurrent = node.id === state.currentNodeId;
@@ -95,6 +96,7 @@ export function DungeonScreen({ state, onEnterNode }: DungeonScreenProps) {
       <div className="dungeon-status">
         <p>HP: {state.hp} / {state.maxHp}</p>
         <p>Gold: {state.gold}</p>
+        <button className="deck-view-btn" onClick={onOpenDeck}>🎴 デッキ確認</button>
       </div>
     </div>
   );

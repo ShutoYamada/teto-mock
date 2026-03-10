@@ -91,6 +91,7 @@ export interface GameState {
   deck: TetrominoCard[];
   hand: TetrominoCard[];
   discardPile: TetrominoCard[];
+  exilePile: TetrominoCard[];
   selectedCardId: string | null;
   
   // Player Stats

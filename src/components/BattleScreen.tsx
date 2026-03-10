@@ -39,7 +39,7 @@ export function BattleScreen({
              </div>
           )}
             <div className="stat-row" style={{ fontSize: '0.8rem', marginTop: '4px', color: '#aaa' }}>
-            山札: {state.deck.length} | 捨て札: {state.discardPile.length}
+            山札: {state.deck.length} | 捨て札: {state.discardPile.length} | 除外: {state.exilePile.length}
           </div>
           <div className="player-statuses" style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
             {state.statuses.map((s, idx) => (
