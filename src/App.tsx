@@ -423,6 +423,35 @@ export default function App() {
         // Filter out enemies that fled or died from effects
         processedEnemies = processedEnemies.filter(e => e.hp > 0);
 
+        let nextScreen = prev.screen;
+        let rewardCards: TetrominoCard[] = [];
+        let rewardArtifact: Artifact | null = null;
+        let finalGold = currentGold;
+
+        if (processedEnemies.length === 0 && prev.hp > 0) {
+          // Victory! (Check hp > 0 just in case of mutual destruction, though hp=0 is handled above)
+          nextScreen = 'result';
+          let rewardCount = 3;
+          if (prev.artifacts.some((a: Artifact) => a.id === 'white_card')) {
+            rewardCount += 1;
+          }
+          rewardCards = generateRewardCards(rewardCount);
+
+          // Elite Reward
+          const hadElite = prev.enemies.some(e => e.type === 'elite');
+          if (hadElite) {
+            rewardArtifact = getRandomArtifactByRarity(prev.stage, prev.artifacts);
+          }
+
+          // Battle victory bonus gold
+          const encounterGold = prev.enemies.reduce((acc, e) => acc + e.goldReward, 0);
+          let earnedGold = encounterGold;
+          if (prev.artifacts.some(a => a.id === 'abacus')) {
+            earnedGold = Math.floor(earnedGold * 1.1);
+          }
+          finalGold += earnedGold;
+        }
+
         // Decide NEXT intents
         processedEnemies = processedEnemies.map(e => decideNextAction(e));
 
@@ -441,18 +470,22 @@ export default function App() {
 
         return {
           ...prev,
+          screen: nextScreen,
           hp: newHp,
           mp: prev.maxMp, // Restore MP at start of player turn
           board: currentBoard,
-          gold: currentGold,
+          gold: finalGold,
           shield: 0, // Armor disappears at start of your turn
           turn: 'player',
           enemies: newEnemiesWithUpdatedStatuses,
           statuses: newPlayerStatuses,
-          hand: newHand,
-          deck: newDeck,
-          discardPile: newDiscardPile,
-          combo: 0 // Reset combo on turn end
+          hand: nextScreen === 'result' ? [] : newHand,
+          deck: nextScreen === 'result' ? [...newDeck, ...newHand, ...newDiscardPile, ...prev.exilePile] : newDeck,
+          discardPile: nextScreen === 'result' ? [] : newDiscardPile,
+          exilePile: nextScreen === 'result' ? [] : prev.exilePile,
+          combo: 0, // Reset combo on turn end
+          rewardCards,
+          rewardArtifact,
         };
       });
     }, 1000); 
