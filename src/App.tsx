@@ -130,7 +130,7 @@ export default function App() {
 
       const boardAfterPlace = placeCard(state.board, selectedCard, row, col);
 
-      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount } = clearLines(boardAfterPlace);
+      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount } = clearLines(boardAfterPlace);
       
       let combo = state.combo;
       if (clearedCount > 0) {
@@ -320,7 +320,7 @@ export default function App() {
         rewardCards,
         rewardArtifact,
         gold: state.gold + earnedGold,
-        hp: Math.max(0, state.hp - reflectDamage),
+        hp: Math.min(state.maxHp, Math.max(0, state.hp - reflectDamage + heartCount * 3)),
       });
     },
     [selectedCard, state]

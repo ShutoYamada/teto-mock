@@ -82,6 +82,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                                      bType === 'sword' ? '🗡️' :
                                       bType === 'shield' ? '🛡️' :
                                       bType === 'combo' ? '➕' :
+                                      bType === 'heart' ? '❤️' :
                                       bType === 'mana' ? '💧' : null;
                }
             }
@@ -96,6 +97,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                               blockType === 'stripe' ? '｜' :
                               blockType === 'trash' ? '🗑️' :
                               blockType === 'combo' ? '➕' :
+                              blockType === 'heart' ? '❤️' :
                               blockType === 'mana' ? '💧' : previewBlockIcon;
 
             let cellClass = 'board-cell';

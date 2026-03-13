@@ -193,6 +193,40 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "全マス弓ブロック(このブロックを含む行列消滅時のダメージが敵全体に及ぶ)",
     rarity: "common",
   },
+  Heart: {
+    shape: [
+      [true, false, true],
+      [false, true, false],
+    ],
+    blockTypes: [
+      ['heart', 'normal', 'heart'],
+      ['normal', 'heart', 'normal'],
+    ],
+    color: '#FF69B4',
+    glowColor: 'rgba(255, 105, 180, 0.5)',
+    cost: 1,
+    attack: 2,
+    effectText: "全マスハートブロック(消滅時HPを3回復する)",
+    rarity: "common",
+  },
+  BigHeart: {
+    shape: [
+      [true, false, true],
+      [true, true, true],
+      [false, true, false],
+    ],
+    blockTypes: [
+      ['heart', 'normal', 'heart'],
+      ['heart', 'heart', 'heart'],
+      ['normal', 'heart', 'normal'],
+    ],
+    color: '#FF1493',
+    glowColor: 'rgba(255, 20, 147, 0.5)',
+    cost: 2,
+    attack: 4,
+    effectText: "全マスハートブロック(消滅時HPを3回復する)",
+    rarity: "uncommon",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
@@ -318,7 +352,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(count: number = 3): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart'];
   const rewards: TetrominoCard[] = [];
   
   // Pick X random cards for drafting
