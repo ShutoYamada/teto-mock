@@ -494,6 +494,45 @@ export const ENEMY_TEMPLATES: Record<string, {
         }
       }
     ]
+  },
+  witch: {
+    name: 'ウィッチ',
+    type: 'normal',
+    hpRange: [45, 45],
+    goldReward: 20,
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに7～8ダメージを与える',
+        damageRange: [7, 8],
+      },
+      {
+        name: '変化の魔術',
+        description: '盤面の特殊ブロック(ゴミ以外)を無作為に1つゴミブロックに変える',
+        effect: (_enemy: Enemy, state: GameState) => {
+          const specialCells: {r: number, c: number}[] = [];
+          for (let r = 0; r < state.board.length; r++) {
+            for (let c = 0; c < state.board[r].length; c++) {
+              const cell = state.board[r][c];
+              if (cell && cell.blockType !== 'normal' && cell.blockType !== 'trash' && cell.blockType !== 'border') {
+                specialCells.push({r, c});
+              }
+            }
+          }
+          
+          if (specialCells.length === 0) return {};
+          
+          const target = specialCells[Math.floor(Math.random() * specialCells.length)];
+          const newBoard = state.board.map(row => [...row]);
+          const currentCell = state.board[target.r][target.c]!;
+          newBoard[target.r][target.c] = {
+             ...currentCell,
+             blockType: 'trash'
+          };
+          return { board: newBoard };
+        }
+      }
+    ]
   }
 };
 
@@ -503,9 +542,9 @@ export function getRandomEnemy(stage: number, type: 'normal' | 'elite' | 'boss')
   // Filter by stage
   if (type === 'normal') {
     if (stage === 1 || stage === 2) {
-      // Slime, Goblin, Pirate, MushroomMan
+      // Slime, Goblin, Pirate, MushroomMan, Witch
     } else {
-      templates = templates.filter(t => t.name !== 'ゴブリン' && t.name !== '海賊' && t.name !== 'キノコ人間');
+      templates = templates.filter(t => t.name !== 'ゴブリン' && t.name !== '海賊' && t.name !== 'キノコ人間' && t.name !== 'ウィッチ');
     }
   }
   
@@ -554,6 +593,8 @@ export function decideNextAction(enemy: Enemy): Enemy {
   } else if (enemy.name === 'キャプテン') {
     action = rand < 65 ? template.actions[0] : template.actions[1];
   } else if (enemy.name === 'キノコ人間') {
+    action = rand < 65 ? template.actions[0] : template.actions[1];
+  } else if (enemy.name === 'ウィッチ') {
     action = rand < 65 ? template.actions[0] : template.actions[1];
   } else {
     action = template.actions[0];

@@ -30,3 +30,4 @@
 - [海賊](./4_Pirate.md)
 - [キャプテン](./5_Captain.md)
 - [キノコ人間](./6_MushroomMan.md)
+- [ウィッチ](./7_Witch.md)
