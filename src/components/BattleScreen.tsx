@@ -91,7 +91,7 @@ export function BattleScreen({
                 <div className="enemy-statuses" style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                   {enemy.statuses.map((s, idx) => (
                     <div key={idx} className="status-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: '4px' }}>
-                      {s.type === 'fury' ? '🔥' : s.type === 'defense' ? '🛡️' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : '✨'}{s.value}
+                      {s.type === 'fury' ? '🔥' : s.type === 'defense' ? '🛡️' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : s.type === 'taunt' ? '📢' : '✨'}{s.value}
                     </div>
                   ))}
                 </div>

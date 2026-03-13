@@ -466,6 +466,31 @@ export const ENEMY_TEMPLATES: Record<string, {
         }
       }
     ]
+  },
+  mushroomMan: {
+    name: 'キノコ人間',
+    type: 'normal',
+    hpRange: [45, 45],
+    goldReward: 20,
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに7～8ダメージを与える',
+        damageRange: [7, 8],
+      },
+      {
+        name: '狂乱の花粉',
+        description: '3ダメージを与え、自身に挑発(2)を付与する',
+        damageRange: [3, 3],
+        effect: (enemy: Enemy) => {
+          const statuses = [...enemy.statuses];
+          const taunt = statuses.find(s => s.type === 'taunt');
+          if (taunt) taunt.value += 2;
+          else statuses.push({ type: 'taunt', value: 2 });
+          return { statuses };
+        }
+      }
+    ]
   }
 };
 
@@ -475,9 +500,9 @@ export function getRandomEnemy(stage: number, type: 'normal' | 'elite' | 'boss')
   // Filter by stage
   if (type === 'normal') {
     if (stage === 1 || stage === 2) {
-      // Slime, Goblin, Pirate
+      // Slime, Goblin, Pirate, MushroomMan
     } else {
-      templates = templates.filter(t => t.name !== 'ゴブリン' && t.name !== '海賊');
+      templates = templates.filter(t => t.name !== 'ゴブリン' && t.name !== '海賊' && t.name !== 'キノコ人間');
     }
   }
   
@@ -524,6 +549,8 @@ export function decideNextAction(enemy: Enemy): Enemy {
   } else if (enemy.name === '海賊') {
     action = rand < 65 ? template.actions[0] : template.actions[1];
   } else if (enemy.name === 'キャプテン') {
+    action = rand < 65 ? template.actions[0] : template.actions[1];
+  } else if (enemy.name === 'キノコ人間') {
     action = rand < 65 ? template.actions[0] : template.actions[1];
   } else {
     action = template.actions[0];

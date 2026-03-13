@@ -458,8 +458,8 @@ export default function App() {
         // Decrement status turns for both player and enemies
         const updateStatuses = (statuses: Status[]) => {
           return statuses
-            .map(s => (s.type === 'fallen' ? { ...s, value: s.value - 1 } : s))
-            .filter(s => s.value > 0 || s.type !== 'fallen');
+            .map(s => (s.type === 'fallen' || s.type === 'taunt' ? { ...s, value: s.value - 1 } : s))
+            .filter(s => s.value > 0 || (s.type !== 'fallen' && s.type !== 'taunt'));
         };
 
         const newPlayerStatuses = updateStatuses(prev.statuses);
@@ -487,6 +487,15 @@ export default function App() {
           rewardCards,
           rewardArtifact,
         };
+      });
+
+      // Ensure target is valid (respect Taunt)
+      setState((prev: GameState) => {
+        const tauntingEnemy = prev.enemies.find(e => e.statuses.some(s => s.type === 'taunt'));
+        if (tauntingEnemy) {
+          return { ...prev, targetEnemyId: tauntingEnemy.id };
+        }
+        return prev;
       });
     }, 1000); 
   }, []);
@@ -649,7 +658,13 @@ export default function App() {
           onCardClick={handleCardClick}
           onTurnEnd={handleTurnEnd}
           onOpenPile={(type) => { setModalType(type); setShowDeckModal(true); }}
-          onTargetClick={(id) => setState(prev => ({ ...prev, targetEnemyId: id }))}
+          onTargetClick={(id) => setState(prev => {
+            const tauntingEnemy = prev.enemies.find(e => e.statuses.some(s => s.type === 'taunt'));
+            if (tauntingEnemy && !prev.enemies.find(e => e.id === id)?.statuses.some(s => s.type === 'taunt')) {
+              return prev; // Locked to taunting enemies
+            }
+            return { ...prev, targetEnemyId: id };
+          })}
           clearedCells={clearedCells}
           flashDamage={flashDamage}
           damageAmount={recentDamage}

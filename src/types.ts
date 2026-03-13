@@ -30,7 +30,7 @@ export type BoardState = CellValue[][];
 export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover';
 export type TurnState = 'player' | 'enemy';
 
-export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power';
+export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt';
 
 export interface Status {
   type: StatusType;
