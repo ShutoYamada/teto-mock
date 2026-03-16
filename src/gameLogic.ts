@@ -409,6 +409,50 @@ export const ENEMY_TEMPLATES: Record<string, {
         weight: 35,
       }
     ]
+  },
+  blockEater: {
+    name: 'ブロックイーター',
+    type: 'boss',
+    hpRange: [125, 125],
+    goldReward: 100,
+    actions: [
+      {
+        name: '通常攻撃',
+        description: 'プレイヤーに10～13ダメージを与える',
+        damageRange: [10, 13],
+        weight: 35,
+      },
+      {
+        name: '雄たけび',
+        description: '自身に憤怒(5)を付与する',
+        effect: (enemy: Enemy) => {
+          const statuses = [...enemy.statuses];
+          const fury = statuses.find(s => s.type === 'fury');
+          if (fury) fury.value += 5;
+          else statuses.push({ type: 'fury', value: 5 });
+          return { statuses };
+        },
+        weight: 35,
+      },
+      {
+        name: '丸かじり',
+        description: '18ダメージを与え、盤面のランダムな行、または列から1ラインを削除する',
+        damageRange: [18, 18],
+        effect: (_enemy: Enemy, state: GameState) => {
+          const isRow = Math.random() > 0.5;
+          const index = Math.floor(Math.random() * state.board.length);
+          const newBoard = state.board.map((row, r) => 
+            row.map((cell, c) => {
+              if (isRow && r === index) return null;
+              if (!isRow && c === index) return null;
+              return cell;
+            })
+          );
+          return { board: newBoard };
+        },
+        weight: 30,
+      }
+    ]
   }
 };
 
