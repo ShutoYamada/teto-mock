@@ -42,6 +42,7 @@ export interface EnemyAction {
   description: string;
   damageRange?: [number, number];
   effect?: (enemy: Enemy, state: GameState) => Partial<Enemy> | Partial<GameState>;
+  weight: number;
 }
 
 export interface Enemy {

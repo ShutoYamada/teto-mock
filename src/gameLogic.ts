@@ -184,145 +184,7 @@ export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
   return true;
 }
 
-export function calculateDamage(
-  board: BoardState,
-  card: TetrominoCard | null,
-  clearedCount: number,
-  combo: number,
-  borderCount: number = 0,
-  stripeCount: number = 0,
-  artifacts: Artifact[] = [],
-  playerStatuses: Status[] = [],
-  targetEnemyStatuses: Status[] = [],
-  targetEnemyType?: 'normal' | 'elite' | 'boss',
-  deckLength: number = 0,
-  placedRow?: number,
-  placedCol?: number
-): number {
-  let damage = 0;
-  if (card) {
-    damage += card.attack;
-    
-    // Check for Sword Buffs on the board
-    let swordBuff = 0;
-    for (let r = 0; r < BOARD_SIZE; r++) {
-      for (let c = 0; c < BOARD_SIZE; c++) {
-        if (board[r][c]?.blockType === 'sword') {
-           swordBuff += 1;
-        }
-      }
-    }
-    damage += swordBuff;
-
-    // Artifact Effects
-    if (artifacts.some(a => a.id === 'brave_sword')) {
-      damage += 1;
-    }
-
-    if (artifacts.some(a => a.id === 'devil_statue')) {
-      damage += 1;
-    }
-
-    if (artifacts.some(a => a.id === 'figure_eight_charm')) {
-      damage += 1;
-    }
-
-    if (targetEnemyType === 'elite' && artifacts.some(a => a.id === 'elite_killer')) {
-      damage += 1;
-    }
-
-    if (artifacts.some(a => a.id === 'seven_card')) {
-      damage += Math.floor(deckLength / 7);
-    }
-    
-    // Player Power Status
-    const power = playerStatuses.find(s => s.type === 'power');
-    if (power) {
-      damage += power.value;
-    }
-
-    // Trash Block Penalty
-    if (placedRow !== undefined && placedCol !== undefined) {
-      let trashPenalty = 0;
-      const size = board.length;
-      
-      // We need to check all cells of the placed card
-      for (let r = 0; r < card.shape.length; r++) {
-        for (let c = 0; c < card.shape[r].length; c++) {
-          if (!card.shape[r][c]) continue;
-          
-          const br = placedRow + r;
-          const bc = placedCol + c;
-          
-          // Check 4 adjacent cells for each cell of the Mino
-          const adjacents = [
-            [br - 1, bc], [br + 1, bc], [br, bc - 1], [br, bc + 1]
-          ];
-          
-          for (const [ar, ac] of adjacents) {
-            if (ar >= 0 && ar < size && ac >= 0 && ac < size) {
-              if (board[ar][ac]?.blockType === 'trash') {
-                // To avoid double counting same trash block for different Mino cells, 
-                // we should track which trash blocks have already penalized.
-                // However, "基础伤害を1マイナスする" could mean per-cell. 
-                // Let's interpret as: if ANY part of the Mino is adjacent to A trash block, -1.
-                // If adjacent to TWO different trash blocks, -2.
-              }
-            }
-          }
-        }
-      }
-      
-      // Re-evaluating: "隣接するマスにミノが配置された時の基礎ダメージを1マイナスする"
-      // Efficient way: find all trash blocks, check if any are adjacent to the new Mino.
-      const placedCells = new Set<string>();
-      for (let r = 0; r < card.shape.length; r++) {
-        for (let c = 0; c < card.shape[r].length; c++) {
-          if (card.shape[r][c]) placedCells.add(`${placedRow + r},${placedCol + c}`);
-        }
-      }
-
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (board[r][c]?.blockType === 'trash') {
-            const isAdjacent = [
-              `${r-1},${c}`, `${r+1},${c}`, `${r},${c-1}`, `${r},${c+1}`
-            ].some(pos => placedCells.has(pos));
-            
-            if (isAdjacent) {
-              trashPenalty++;
-            }
-          }
-        }
-      }
-      damage = Math.max(0, damage - trashPenalty);
-    }
-  }
-  
-  if (clearedCount > 0) {
-    // Base line clear damage
-    damage += clearedCount * 10;
-    // Combo multiplier
-    if (combo > 0) {
-      damage += combo * 5;
-    }
-    // Border/Stripe bonuses
-    damage += borderCount * 5;
-    damage += stripeCount * 5;
-
-    if (artifacts.some(a => a.id === 'figure_eight_charm')) {
-      damage += (borderCount + stripeCount); // Matrix attack bonus +1 per block
-    }
-  }
-  
-  // Target Enemy Fallen Status (1.5x damage)
-  const fallen = targetEnemyStatuses.find(s => s.type === 'fallen');
-  if (fallen) {
-    damage = Math.floor(damage * 1.5);
-  }
-  
-  return damage;
-}
+// calculateDamage was removed and migrated to DamagePipeline.ts
 
 export function generateEnemyIntent(stage: number): number {
   // Keeping this for generic use, but we'll use getNextEnemyAction for specific enemies
@@ -348,11 +210,13 @@ export const ENEMY_TEMPLATES: Record<string, {
         name: '通常攻撃',
         description: 'プレイヤーに5～10ダメージを与える',
         damageRange: [5, 10],
+        weight: 95,
       },
       {
         name: '逃げる',
         description: '自分を盤面から消す',
         effect: (_enemy: Enemy) => ({ hp: 0 }),
+        weight: 5,
       }
     ]
   },
@@ -366,6 +230,7 @@ export const ENEMY_TEMPLATES: Record<string, {
         name: '通常攻撃',
         description: 'プレイヤーに10～15ダメージを与える',
         damageRange: [10, 15],
+        weight: 50,
       },
       {
         name: '怒る',
@@ -376,7 +241,8 @@ export const ENEMY_TEMPLATES: Record<string, {
           if (fury) fury.value += 5;
           else statuses.push({ type: 'fury', value: 5 });
           return { statuses };
-        }
+        },
+        weight: 50,
       }
     ]
   },
@@ -390,6 +256,7 @@ export const ENEMY_TEMPLATES: Record<string, {
         name: '通常攻撃',
         description: 'プレイヤーに6～11ダメージを与える',
         damageRange: [6, 11],
+        weight: 50,
       },
       {
         name: 'ゴミを投げる',
@@ -415,7 +282,8 @@ export const ENEMY_TEMPLATES: Record<string, {
              blockType: 'trash'
           };
           return { board: newBoard };
-        }
+        },
+        weight: 50,
       }
     ]
   },
@@ -429,6 +297,7 @@ export const ENEMY_TEMPLATES: Record<string, {
         name: '通常攻撃',
         description: 'プレイヤーに7～12ダメージを与える',
         damageRange: [7, 12],
+        weight: 65,
       },
       {
         name: '盗む',
@@ -436,7 +305,8 @@ export const ENEMY_TEMPLATES: Record<string, {
         damageRange: [3, 3],
         effect: (_enemy: Enemy, state: GameState) => {
           return { gold: Math.max(0, state.gold - 10) };
-        }
+        },
+        weight: 35,
       }
     ]
   },
@@ -450,6 +320,7 @@ export const ENEMY_TEMPLATES: Record<string, {
         name: '通常攻撃',
         description: 'プレイヤーに10ダメージを与える',
         damageRange: [10, 10],
+        weight: 65,
       },
       {
         name: '号令',
@@ -466,7 +337,8 @@ export const ENEMY_TEMPLATES: Record<string, {
             return e;
           });
           return { enemies: newEnemies };
-        }
+        },
+        weight: 35,
       }
     ]
   },
@@ -480,6 +352,7 @@ export const ENEMY_TEMPLATES: Record<string, {
         name: '通常攻撃',
         description: 'プレイヤーに7～8ダメージを与える',
         damageRange: [7, 8],
+        weight: 65,
       },
       {
         name: '狂乱の花粉',
@@ -491,7 +364,8 @@ export const ENEMY_TEMPLATES: Record<string, {
           if (taunt) taunt.value += 2;
           else statuses.push({ type: 'taunt', value: 2 });
           return { statuses };
-        }
+        },
+        weight: 35,
       }
     ]
   },
@@ -505,6 +379,7 @@ export const ENEMY_TEMPLATES: Record<string, {
         name: '通常攻撃',
         description: 'プレイヤーに7～8ダメージを与える',
         damageRange: [7, 8],
+        weight: 65,
       },
       {
         name: '変化の魔術',
@@ -530,7 +405,8 @@ export const ENEMY_TEMPLATES: Record<string, {
              blockType: 'trash'
           };
           return { board: newBoard };
-        }
+        },
+        weight: 35,
       }
     ]
   }
@@ -579,25 +455,18 @@ export function decideNextAction(enemy: Enemy): Enemy {
   const template = Object.values(ENEMY_TEMPLATES).find(t => t.name === enemy.name);
   if (!template) return enemy;
   
-  let action: EnemyAction;
-  const rand = Math.random() * 100;
-  
-  if (enemy.name === 'スライム') {
-    action = rand < 95 ? template.actions[0] : template.actions[1];
-  } else if (enemy.name === 'ドラゴン') {
-    action = rand < 50 ? template.actions[0] : template.actions[1];
-  } else if (enemy.name === 'ゴブリン') {
-    action = rand < 50 ? template.actions[0] : template.actions[1];
-  } else if (enemy.name === '海賊') {
-    action = rand < 65 ? template.actions[0] : template.actions[1];
-  } else if (enemy.name === 'キャプテン') {
-    action = rand < 65 ? template.actions[0] : template.actions[1];
-  } else if (enemy.name === 'キノコ人間') {
-    action = rand < 65 ? template.actions[0] : template.actions[1];
-  } else if (enemy.name === 'ウィッチ') {
-    action = rand < 65 ? template.actions[0] : template.actions[1];
-  } else {
-    action = template.actions[0];
+  let totalWeight = template.actions.reduce((acc, a) => acc + (a.weight || 0), 0);
+  if (totalWeight === 0) totalWeight = 1;
+
+  let rand = Math.random() * totalWeight;
+  let action = template.actions[0];
+
+  for (const a of template.actions) {
+    if (rand < (a.weight || 0)) {
+      action = a;
+      break;
+    }
+    rand -= (a.weight || 0);
   }
   
   let damage = 0;

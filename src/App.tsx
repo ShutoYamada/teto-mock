@@ -1,67 +1,13 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useReducer } from 'react';
 import { DungeonScreen } from './components/DungeonScreen';
 import { BattleScreen } from './components/BattleScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { RestScreen } from './components/RestScreen';
-import { buildDeck, generateRewardCards } from './tetrominos';
-import {
-  createEmptyBoard,
-  canPlaceCard,
-  placeCard,
-  clearLines,
-  calculateDamage,
-  generateDungeonMap,
-  rotateShape,
-  rotateBlockTypes,
-  getRandomEnemy,
-  getEnemyEncounter,
-  decideNextAction,
-  ENEMY_TEMPLATES,
-  BOARD_SIZE,
-  createArtifact,
-  getRandomArtifactByRarity,
-} from './gameLogic';
-import type { GameState, TetrominoCard, Enemy, Status, Artifact, BoardState } from './types';
-
-function initGame(): GameState {
-  const deck = buildDeck();
-  return {
-    screen: 'dungeon',
-    board: createEmptyBoard(BOARD_SIZE),
-    boardSize: BOARD_SIZE,
-    deck,
-    hand: [],
-    discardPile: [],
-    exilePile: [],
-    selectedCardId: null,
-    hp: 50,
-    maxHp: 50,
-    mp: 5,
-    maxMp: 5,
-    gold: 0,
-    statuses: [],
-    shield: 0,
-    turn: 'player',
-    combo: 0,
-    enemies: [],
-    targetEnemyId: null,
-    stage: 1,
-    dungeonMap: generateDungeonMap(),
-    currentNodeId: null,
-    rewardCards: [],
-    score: 0,
-    clearedLines: 0,
-    artifacts: [
-      createArtifact('brave_sword'),
-      createArtifact('abacus'),
-      createArtifact('champion_glove')
-    ], // Initially give artifacts for testing
-    rewardArtifact: null,
-  };
-}
+import type { TetrominoCard, Artifact } from './types';
+import { gameReducer, initGame } from './gameReducer';
 
 export default function App() {
-  const [state, setState] = useState<GameState>(initGame);
+  const [state, dispatch] = useReducer(gameReducer, undefined, initGame);
   const [clearedCells, setClearedCells] = useState<Set<string>>(new Set());
   const [flashDamage, setFlashDamage] = useState(false);
   const [recentDamage, setRecentDamage] = useState(0);
@@ -72,569 +18,83 @@ export default function App() {
     state.hand.find((c: TetrominoCard) => c.id === state.selectedCardId) ?? null;
 
   const startBattle = useCallback((nodeId: string) => {
-    setState((prev: GameState) => {
-      // Draw initial hand
-      let deck = [...prev.deck];
-      if (deck.length < 7) deck = buildDeck();
-      
-      let baseHandSize = 7;
-      if (prev.artifacts.some(a => a.id === 'devil_statue')) {
-        baseHandSize -= 1;
-      }
-      
-      const hand = deck.splice(0, baseHandSize);
-      
-      const nodeParts = nodeId.split('-');
-      const depth = parseInt(nodeParts[1], 10);
-      const targetNode = prev.dungeonMap.find(n => n.id === nodeId);
-
-      if (targetNode?.type === 'rest') {
-        return {
-          ...prev,
-          screen: 'rest',
-          currentNodeId: nodeId,
-          stage: depth + 1,
-        };
-      }
-      
-      return {
-        ...prev,
-        screen: 'battle',
-        board: createEmptyBoard(),
-        hand,
-        deck,
-        discardPile: [],
-        exilePile: [],
-        hp: prev.hp,
-        mp: prev.maxMp, // Fully restore MP at battle start
-        shield: 0,
-        turn: 'player',
-        combo: 0,
-        currentNodeId: nodeId,
-        stage: depth + 1,
-        enemies: getEnemyEncounter(depth + 1, depth === 14 ? 'boss' : (depth % 3 === 0 && depth > 0 ? 'elite' : 'normal')),
-        targetEnemyId: null, // Will be set by the getRandomEnemy result if we wanted, but let's just pick first
-      };
-    });
-    setState(prev => ({ ...prev, targetEnemyId: prev.enemies[0]?.id || null }));
+    dispatch({ type: 'START_BATTLE', nodeId });
   }, []);
 
   const handleCardClick = useCallback((id: string) => {
-    setState((prev: GameState) => {
-      // Can only select if we have enough MP
-      const card = prev.hand.find((c: TetrominoCard) => c.id === id);
-      if (card && prev.mp < card.cost) {
-        return prev; // Not enough MP
-      }
-      return {
-        ...prev,
-        selectedCardId: prev.selectedCardId === id ? null : id,
-      };
-    });
+    dispatch({ type: 'SELECT_CARD', cardId: id });
   }, []);
 
   const handleCellClick = useCallback(
     (row: number, col: number) => {
-      if (!selectedCard || state.turn !== 'player') return;
-      if (state.mp < selectedCard.cost) return; // double check
-      if (!canPlaceCard(state.board, selectedCard, row, col)) return;
-
-      const boardAfterPlace = placeCard(state.board, selectedCard, row, col);
-
-      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount } = clearLines(boardAfterPlace);
-      
-      let combo = state.combo;
-      if (clearedCount > 0) {
-        let addedCombo = 1 + comboCount;
-        if (comboCount > 0 && state.artifacts.some((a: Artifact) => a.id === 'champion_glove')) {
-          addedCombo += 1;
-        }
-        combo += addedCombo;
-        const cleared = new Set<string>();
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          for (let c = 0; c < BOARD_SIZE; c++) {
-            if (boardAfterPlace[r][c] !== null && newBoard[r][c] === null) {
-              cleared.add(`${r},${c}`);
-            }
-          }
-        }
-        setClearedCells(cleared);
-        setTimeout(() => setClearedCells(new Set()), 500);
-      } else {
-        combo = 0; 
-      }
-
-      const targetEnemy = state.enemies.find(e => e.id === state.targetEnemyId);
-      const damage = calculateDamage(
-        boardAfterPlace, 
-        selectedCard, 
-        clearedCount, 
-        combo, 
-        borderCount, 
-        stripeCount, 
-        state.artifacts,
-        state.statuses,
-        targetEnemy?.statuses || [],
-        targetEnemy?.type,
-        state.deck.length + state.hand.length + state.discardPile.length,
+      dispatch({
+        type: 'PLACE_CARD',
         row,
-        col
-      );
-      
-      // Calculate Shield granted by this card
-      let addedShields = 0;
-      if (selectedCard.blockTypes) {
-         for (let r = 0; r < selectedCard.blockTypes.length; r++) {
-            for (let c = 0; c < selectedCard.blockTypes[r].length; c++) {
-               if (selectedCard.blockTypes[r][c] === 'shield' && selectedCard.shape[r][c]) {
-                   addedShields++;
-               }
-            }
-         }
-      }
-      
-      const newShield = state.shield + addedShields;
-
-      // Handle Draw Blocks
-      let drawnCardsCount = 0;
-      if (selectedCard.blockTypes) {
-        for (let r = 0; r < selectedCard.blockTypes.length; r++) {
-          for (let c = 0; c < selectedCard.blockTypes[r].length; c++) {
-            if (selectedCard.blockTypes[r][c] === 'draw' && selectedCard.shape[r][c]) {
-              drawnCardsCount++;
-            }
+        col,
+        damageResultCallback: (damage, bombCount, cleared) => {
+          if (cleared.size > 0) {
+             setClearedCells(cleared);
+             setTimeout(() => setClearedCells(new Set()), 500);
+          }
+          if (damage > 0) {
+             setRecentDamage(damage);
+             setFlashDamage(true);
+             setTimeout(() => setFlashDamage(false), 500);
           }
         }
-      }
-
-      let newHand = state.hand.filter((c: TetrominoCard) => c.id !== selectedCard.id);
-      let newDeck = [...state.deck];
-      let newDiscardPile = [...state.discardPile, selectedCard];
-
-      for (let i = 0; i < drawnCardsCount; i++) {
-        if (newDeck.length === 0 && newDiscardPile.length > 0) {
-          newDeck = [...newDiscardPile].sort(() => Math.random() - 0.5);
-          newDiscardPile = [];
-        }
-        if (newDeck.length > 0) {
-          newHand.push(newDeck.shift()!);
-        }
-      }
-      const totalTargetDamage = damage + bombCount * 10;
-      if (totalTargetDamage > 0) {
-        setRecentDamage(totalTargetDamage);
-        setFlashDamage(true);
-        setTimeout(() => setFlashDamage(false), 500);
-      }
-
-      let newEnemies = state.enemies.map((e: Enemy) => {
-        let enemyDamage = bombCount * 10;
-        if (e.id === state.targetEnemyId || bowCount > 0) {
-           enemyDamage += damage;
-        }
-        
-        // Handle Enemy Statuses
-        let actualEnemyDamage = enemyDamage;
-        const defense = e.statuses.find(s => s.type === 'defense');
-        if (defense) {
-          actualEnemyDamage = Math.max(0, actualEnemyDamage - defense.value);
-          // Remove defense status after it's used
-        }
-
-        const isFallen = e.statuses.some(s => s.type === 'fallen');
-        if (isFallen) {
-          actualEnemyDamage = Math.floor(actualEnemyDamage * 1.5);
-        }
-
-        const newStatuses = e.statuses.filter(s => s.type !== 'defense');
-
-        return { 
-          ...e, 
-          hp: Math.max(0, e.hp - actualEnemyDamage),
-          statuses: newStatuses
-        };
-      });
-
-      // Handle Reflect Damage
-      let reflectDamage = 0;
-      state.enemies.forEach(e => {
-        if (e.id === state.targetEnemyId) {
-          const reflect = e.statuses.find(s => s.type === 'reflect');
-          if (reflect && damage > 0) {
-            reflectDamage += reflect.value;
-          }
-        }
-      });
-
-      // Filter out dead enemies
-      newEnemies = newEnemies.filter((e: Enemy) => e.hp > 0);
-      
-      const targetStillAlive = newEnemies.some((e: Enemy) => e.id === state.targetEnemyId);
-      const newTargetId = targetStillAlive ? state.targetEnemyId : (newEnemies[0]?.id ?? null);
-      
-      let newMp = state.mp - selectedCard.cost + manaCount;
-      if (newMp > state.maxMp) newMp = state.maxMp;
-      
-      const newScore = state.score + clearedCount * 100 + damage * 10 + bombCount * 100;
-      const newClearedLines = state.clearedLines + clearedCount;
-      
-      let nextScreen = state.screen;
-      let rewardCards: TetrominoCard[] = [];
-      let rewardArtifact: Artifact | null = null;
-      
-      if (newEnemies.length === 0) {
-        // Victory!
-        nextScreen = 'result';
-        let rewardCount = 3;
-        if (state.artifacts.some((a: Artifact) => a.id === 'white_card')) {
-          rewardCount += 1;
-        }
-        rewardCards = generateRewardCards(rewardCount);
-
-        // Elite Reward
-        const hadElite = state.enemies.some(e => e.type === 'elite');
-        if (hadElite) {
-          rewardArtifact = getRandomArtifactByRarity(state.stage, state.artifacts);
-        }
-      }
-
-      // Calculate Gold Reward
-      let earnedGold = goldCount * 5;
-      if (newEnemies.length === 0) {
-        // Battle victory bonus: Sum of goldReward from ALL enemies in this encounter
-        // Note: state.enemies contains the initial enemies for the turn
-        const encounterGold = state.enemies.reduce((acc, e) => acc + e.goldReward, 0);
-        earnedGold += encounterGold;
-
-        // Apply Abacus Artifact (+10% gold)
-        if (state.artifacts.some(a => a.id === 'abacus')) {
-          earnedGold = Math.floor(earnedGold * 1.1);
-        }
-      }
-
-      setState({
-        ...state,
-        screen: nextScreen,
-        board: newBoard,
-        hand: newEnemies.length === 0 ? [] : newHand,
-        discardPile: newEnemies.length === 0 ? [] : newDiscardPile,
-        exilePile: newEnemies.length === 0 ? [] : state.exilePile,
-        deck: newEnemies.length === 0 ? [...state.deck, ...newHand, ...newDiscardPile, ...state.exilePile] : state.deck,
-        selectedCardId: null,
-        mp: newMp,
-        shield: newShield,
-        combo,
-        enemies: newEnemies,
-        targetEnemyId: newTargetId,
-        score: newScore,
-        clearedLines: newClearedLines,
-        rewardCards,
-        rewardArtifact,
-        gold: state.gold + earnedGold,
-        hp: Math.min(state.maxHp, Math.max(0, state.hp - reflectDamage + heartCount * 3)),
       });
     },
-    [selectedCard, state]
+    []
   );
 
   const handleTurnEnd = useCallback(() => {
-    // Enemy Turn
-    setState((prev: GameState) => ({ ...prev, turn: 'enemy', selectedCardId: null }));
-    
+    dispatch({ type: 'END_PLAYER_TURN' });
     setTimeout(() => {
-      setState((prev: GameState) => {
-        // Handle Spike blocks (self-damage)
-        let spikeDamage = 0;
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          for (let c = 0; c < BOARD_SIZE; c++) {
-            if (prev.board[r][c]?.blockType === 'spike') {
-              spikeDamage++;
-            }
-          }
-        }
-
-        const enemyDamage = prev.enemies.reduce((acc: number, enemy: Enemy) => acc + enemy.nextAttack, 0);
-        const totalDamage = spikeDamage + enemyDamage;
-        
-        let actualDamage = totalDamage;
-        
-        // Handle Player Fallen Status (1.5x damage taken)
-        const isPlayerFallen = prev.statuses.some(s => s.type === 'fallen');
-        if (isPlayerFallen) {
-          actualDamage = Math.floor(actualDamage * 1.5);
-        }
-
-        actualDamage = Math.max(0, actualDamage - prev.shield);
-        
-        // Brave Shield
-        if (prev.artifacts.some(a => a.id === 'brave_shield')) {
-          actualDamage = Math.max(0, actualDamage - 1);
-        }
-
-        let newHp = prev.hp - actualDamage;
-        if (newHp <= 0) newHp = 0;
-        
-        if (newHp === 0) {
-          return { ...prev, hp: 0, screen: 'gameover' };
-        }
-
-        // Replenish Hand (Target 5 draws)
-        let newHand: TetrominoCard[] = [];
-        let newDeck = [...prev.deck];
-        let newDiscardPile = [...prev.discardPile, ...prev.hand]; // Move leftovers to discard
-
-        // Draw cards
-        let targetDraw = 5;
-        if (prev.artifacts.some(a => a.id === 'devil_statue')) {
-          targetDraw -= 1;
-        }
-
-        for (let i = 0; i < targetDraw; i++) {
-          if (newDeck.length === 0) {
-            // Shuffle discard pile into deck
-            newDeck = [...newDiscardPile].sort(() => Math.random() - 0.5);
-            newDiscardPile = [];
-          }
-          if (newDeck.length > 0) {
-            newHand.push(newDeck.shift()!);
-          }
-        }
-
-        // Handle Player Reflect Damage to all enemies
-        const playerReflect = prev.statuses.find(s => s.type === 'reflect');
-        let processedEnemies = [...prev.enemies];
-        if (playerReflect && enemyDamage > 0) {
-          processedEnemies = processedEnemies.map(e => ({
-            ...e,
-            hp: Math.max(0, e.hp - playerReflect.value)
-          }));
-        }
-
-        // Process enemy effects
-        let currentBoard = prev.board;
-        let currentGold = prev.gold;
-        processedEnemies.forEach((enemy, idx) => {
-           const template = Object.values(ENEMY_TEMPLATES).find(t => t.name === enemy.name);
-           const action = template?.actions.find(a => a.name === enemy.intent.actionName);
-           if (action?.effect) {
-              const result = action.effect(enemy, { ...prev, board: currentBoard, gold: currentGold, enemies: processedEnemies });
-              if ('board' in result) {
-                 currentBoard = result.board as BoardState;
-              }
-              if ('gold' in result) {
-                currentGold = result.gold as number;
-              }
-              if ('enemies' in result) {
-                processedEnemies = result.enemies as Enemy[];
-              }
-              processedEnemies[idx] = { ...processedEnemies[idx], ...result as Partial<Enemy> };
-           }
-        });
-
-        // Filter out enemies that fled or died from effects
-        processedEnemies = processedEnemies.filter(e => e.hp > 0);
-
-        let nextScreen = prev.screen;
-        let rewardCards: TetrominoCard[] = [];
-        let rewardArtifact: Artifact | null = null;
-        let finalGold = currentGold;
-
-        if (processedEnemies.length === 0 && prev.hp > 0) {
-          // Victory! (Check hp > 0 just in case of mutual destruction, though hp=0 is handled above)
-          nextScreen = 'result';
-          let rewardCount = 3;
-          if (prev.artifacts.some((a: Artifact) => a.id === 'white_card')) {
-            rewardCount += 1;
-          }
-          rewardCards = generateRewardCards(rewardCount);
-
-          // Elite Reward
-          const hadElite = prev.enemies.some(e => e.type === 'elite');
-          if (hadElite) {
-            rewardArtifact = getRandomArtifactByRarity(prev.stage, prev.artifacts);
-          }
-
-          // Battle victory bonus gold
-          const encounterGold = prev.enemies.reduce((acc, e) => acc + e.goldReward, 0);
-          let earnedGold = encounterGold;
-          if (prev.artifacts.some(a => a.id === 'abacus')) {
-            earnedGold = Math.floor(earnedGold * 1.1);
-          }
-          finalGold += earnedGold;
-        }
-
-        // Decide NEXT intents
-        processedEnemies = processedEnemies.map(e => decideNextAction(e));
-
-        // Decrement status turns for both player and enemies
-        const updateStatuses = (statuses: Status[]) => {
-          return statuses
-            .map(s => (s.type === 'fallen' || s.type === 'taunt' ? { ...s, value: s.value - 1 } : s))
-            .filter(s => s.value > 0 || (s.type !== 'fallen' && s.type !== 'taunt'));
-        };
-
-        const newPlayerStatuses = updateStatuses(prev.statuses);
-        const newEnemiesWithUpdatedStatuses = processedEnemies.map(e => ({
-          ...e,
-          statuses: updateStatuses(e.statuses)
-        }));
-
-        return {
-          ...prev,
-          screen: nextScreen,
-          hp: newHp,
-          mp: prev.maxMp, // Restore MP at start of player turn
-          board: currentBoard,
-          gold: finalGold,
-          shield: 0, // Armor disappears at start of your turn
-          turn: 'player',
-          enemies: newEnemiesWithUpdatedStatuses,
-          statuses: newPlayerStatuses,
-          hand: nextScreen === 'result' ? [] : newHand,
-          deck: nextScreen === 'result' ? [...newDeck, ...newHand, ...newDiscardPile, ...prev.exilePile] : newDeck,
-          discardPile: nextScreen === 'result' ? [] : newDiscardPile,
-          exilePile: nextScreen === 'result' ? [] : prev.exilePile,
-          combo: 0, // Reset combo on turn end
-          rewardCards,
-          rewardArtifact,
-        };
-      });
-
-      // Ensure target is valid (respect Taunt)
-      setState((prev: GameState) => {
-        const tauntingEnemy = prev.enemies.find(e => e.statuses.some(s => s.type === 'taunt'));
-        if (tauntingEnemy) {
-          return { ...prev, targetEnemyId: tauntingEnemy.id };
-        }
-        return prev;
-      });
-    }, 1000); 
+       dispatch({ type: 'EXECUTE_ENEMY_TURN' });
+    }, 1000);
   }, []);
 
   const handleArtifactSelect = useCallback((artifact: Artifact | null) => {
-    setState((prev: GameState) => {
-      if (!artifact) return { ...prev, rewardArtifact: null };
-      return {
-        ...prev,
-        artifacts: [...prev.artifacts, artifact],
-        rewardArtifact: null,
-      };
-    });
+    dispatch({ type: 'SELECT_ARTIFACT', artifact });
   }, []);
 
   const handleRewardSelect = useCallback((card: TetrominoCard) => {
-    setState((prev: GameState) => {
-      const isBoss = prev.currentNodeId?.split('-')[1] === '14'; // depth 14 is boss
-      
-      // Note: We don't have artifact rewards yet in this mock, 
-      // but let's assume we might get figure_eight_charm.
-      // For now, I'll just check if artifacts changed or manually check current ones.
-      
-      let boardSize = prev.boardSize;
-      let board = prev.board;
-      if (prev.artifacts.some((a: Artifact) => a.id === 'figure_eight_charm') && prev.boardSize === 7) {
-        boardSize = 8;
-        board = createEmptyBoard(8); // This clears board but artifact expansion usually happens between nodes
-      }
-
-      if (isBoss) {
-        // You beat the 15th node!
-        return {
-           ...prev,
-           deck: [...prev.deck, card],
-           boardSize,
-           board,
-           screen: 'gameover',
-           rewardCards: [],
-        };
-      }
-      return {
-        ...prev,
-        deck: [...prev.deck, card],
-        boardSize,
-        board,
-        screen: 'dungeon',
-        rewardCards: [],
-      };
-    });
+    dispatch({ type: 'SELECT_REWARD', card });
   }, []);
 
   const handleRestHeal = useCallback(() => {
-    setState((prev: GameState) => {
-      const hasCoffee = prev.artifacts.some(a => a.id === 'drip_coffee');
-      const healAmount = Math.floor(prev.maxHp * (hasCoffee ? 0.4 : 0.2));
-      return {
-        ...prev,
-        hp: Math.min(prev.maxHp, prev.hp + healAmount),
-        screen: 'dungeon',
-      };
-    });
+    dispatch({ type: 'REST_HEAL' });
   }, []);
 
   const handleRestRemoveCards = useCallback((cardIds: string[]) => {
-    setState((prev: GameState) => {
-      const newDeck = prev.deck.filter(c => !cardIds.includes(c.id));
-      return {
-        ...prev,
-        deck: newDeck,
-        screen: 'dungeon',
-      };
-    });
+    dispatch({ type: 'REST_REMOVE_CARDS', cardIds });
   }, []);
 
   const handleRestSkip = useCallback(() => {
-    setState((prev: GameState) => ({
-      ...prev,
-      screen: 'dungeon',
-    }));
+    dispatch({ type: 'REST_SKIP' });
   }, []);
 
   const handleNewGame = useCallback(() => {
     setClearedCells(new Set());
-    setState(initGame());
+    dispatch({ type: 'NEW_GAME' });
   }, []);
 
-  // Deselect on Escape, Rotate on R or Up Arrow
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setState((prev: GameState) => ({ ...prev, selectedCardId: null }));
+        dispatch({ type: 'CANCEL_SELECTION' });
       } else if (e.key === 'r' || e.key === 'R' || e.key === 'ArrowUp') {
-        setState((prev: GameState) => {
-          if (!prev.selectedCardId) return prev;
-          const cardIndex = prev.hand.findIndex((c: TetrominoCard) => c.id === prev.selectedCardId);
-          if (cardIndex === -1) return prev;
-          
-          const newHand = [...prev.hand];
-          const oldCard = newHand[cardIndex];
-          newHand[cardIndex] = {
-            ...oldCard,
-            shape: rotateShape(oldCard.shape),
-            blockTypes: oldCard.blockTypes ? rotateBlockTypes(oldCard.blockTypes) : undefined,
-          };
-          
-          return { ...prev, hand: newHand };
-        });
+        if (state.selectedCardId) {
+          dispatch({ type: 'ROTATE_CARD', cardId: state.selectedCardId });
+        }
       }
     };
     
     const onContextMenu = (e: MouseEvent) => {
-      e.preventDefault(); // Prevent standard right-click menu
-      setState((prev: GameState) => {
-        if (!prev.selectedCardId) return prev;
-        const cardIndex = prev.hand.findIndex((c: TetrominoCard) => c.id === prev.selectedCardId);
-        if (cardIndex === -1) return prev;
-        
-        const newHand = [...prev.hand];
-        const oldCard = newHand[cardIndex];
-        newHand[cardIndex] = {
-          ...oldCard,
-          shape: rotateShape(oldCard.shape),
-          blockTypes: oldCard.blockTypes ? rotateBlockTypes(oldCard.blockTypes) : undefined,
-        };
-        
-        return { ...prev, hand: newHand };
-      });
+      e.preventDefault();
+      if (state.selectedCardId) {
+        dispatch({ type: 'ROTATE_CARD', cardId: state.selectedCardId });
+      }
     };
     
     window.addEventListener('keydown', onKey);
@@ -643,7 +103,7 @@ export default function App() {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('contextmenu', onContextMenu);
     };
-  }, []);
+  }, [state.selectedCardId]);
 
   return (
     <div className="app">
@@ -699,13 +159,7 @@ export default function App() {
           onCardClick={handleCardClick}
           onTurnEnd={handleTurnEnd}
           onOpenPile={(type) => { setModalType(type); setShowDeckModal(true); }}
-          onTargetClick={(id) => setState(prev => {
-            const tauntingEnemy = prev.enemies.find(e => e.statuses.some(s => s.type === 'taunt'));
-            if (tauntingEnemy && !prev.enemies.find(e => e.id === id)?.statuses.some(s => s.type === 'taunt')) {
-              return prev; // Locked to taunting enemies
-            }
-            return { ...prev, targetEnemyId: id };
-          })}
+          onTargetClick={(id) => dispatch({ type: 'SET_TARGET_ENEMY', enemyId: id })}
           clearedCells={clearedCells}
           flashDamage={flashDamage}
           damageAmount={recentDamage}
