@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { TetrominoCard } from '../types';
 import { BOARD_SIZE, canPlaceCard } from '../gameLogic';
 import type { BoardState } from '../types';
@@ -13,6 +13,8 @@ interface BoardProps {
 
 export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardProps) {
   const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
+  const touchTimer = useRef<number | null>(null);
+  const lastTouchCell = useRef<{ row: number; col: number } | null>(null);
 
   const getPreviewCells = useCallback((): Set<string> => {
     if (!selectedCard || !hoverCell) return new Set();
@@ -51,6 +53,44 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
     return cells;
   }, [selectedCard, hoverCell, board]);
 
+  const handleTouchStart = (r: number, c: number) => {
+    if (!selectedCard) return;
+    if (touchTimer.current) window.clearTimeout(touchTimer.current);
+    touchTimer.current = window.setTimeout(() => {
+      setHoverCell({ row: r, col: c });
+      lastTouchCell.current = { row: r, col: c };
+      touchTimer.current = null;
+    }, 250); // 250ms for a snappy long press
+  };
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!selectedCard) return;
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cellElement = element?.closest('.board-cell');
+    if (cellElement) {
+      const rowStr = cellElement.getAttribute('data-row');
+      const colStr = cellElement.getAttribute('data-col');
+      if (rowStr !== null && colStr !== null) {
+        const row = parseInt(rowStr);
+        const col = parseInt(colStr);
+        if (lastTouchCell.current?.row !== row || lastTouchCell.current?.col !== col) {
+          setHoverCell({ row, col });
+          lastTouchCell.current = { row, col };
+        }
+      }
+    }
+  }, [selectedCard]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchTimer.current) {
+      window.clearTimeout(touchTimer.current);
+      touchTimer.current = null;
+    }
+    setHoverCell(null);
+    lastTouchCell.current = null;
+  }, []);
+
   const previewCells = getPreviewCells();
   const invalidCells = isInvalidDrop() ? getInvalidPreviewCells() : new Set<string>();
 
@@ -59,6 +99,9 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
       <div
         className="board"
         style={{ gridTemplateColumns: `repeat(${board.length}, 1fr)` }}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         {board.map((row, r) =>
           row.map((cell, c) => {
@@ -110,6 +153,8 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
               <div
                 key={key}
                 className={cellClass}
+                data-row={r}
+                data-col={c}
                 style={
                   cellType && !isCleared
                     ? {
@@ -134,6 +179,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                 onClick={() => onCellClick(r, c)}
                 onMouseEnter={() => setHoverCell({ row: r, col: c })}
                 onMouseLeave={() => setHoverCell(null)}
+                onTouchStart={() => handleTouchStart(r, c)}
               >
                   {blockIcon}
               </div>
