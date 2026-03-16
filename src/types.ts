@@ -27,7 +27,7 @@ export type CellValue = CellData | null;
 
 export type BoardState = CellValue[][];
 
-export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover';
+export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest';
 export type TurnState = 'player' | 'enemy';
 
 export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt';

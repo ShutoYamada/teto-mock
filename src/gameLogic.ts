@@ -839,6 +839,22 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,
+  },
+  drip_coffee: {
+    name: 'ドリップコーヒー',
+    rarity: 'common',
+    description: '休憩所でHP回復を選択した場合の効果を「最大HPの40%の値(端数切捨て)を回復する」に変更する',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
+  scissors: {
+    name: 'ハサミ',
+    rarity: 'rare',
+    description: '休憩所でカード削除を選択した場合の効果を「現在のデッキからプレイヤーが選択した2枚までのカードをゲーム中永続的に削除する」に変更する',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   }
 };
 

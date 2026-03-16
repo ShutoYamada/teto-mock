@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { DungeonScreen } from './components/DungeonScreen';
 import { BattleScreen } from './components/BattleScreen';
 import { ResultScreen } from './components/ResultScreen';
+import { RestScreen } from './components/RestScreen';
 import { buildDeck, generateRewardCards } from './tetrominos';
 import {
   createEmptyBoard,
@@ -85,6 +86,16 @@ export default function App() {
       
       const nodeParts = nodeId.split('-');
       const depth = parseInt(nodeParts[1], 10);
+      const targetNode = prev.dungeonMap.find(n => n.id === nodeId);
+
+      if (targetNode?.type === 'rest') {
+        return {
+          ...prev,
+          screen: 'rest',
+          currentNodeId: nodeId,
+          stage: depth + 1,
+        };
+      }
       
       return {
         ...prev,
@@ -548,6 +559,36 @@ export default function App() {
     });
   }, []);
 
+  const handleRestHeal = useCallback(() => {
+    setState((prev: GameState) => {
+      const hasCoffee = prev.artifacts.some(a => a.id === 'drip_coffee');
+      const healAmount = Math.floor(prev.maxHp * (hasCoffee ? 0.4 : 0.2));
+      return {
+        ...prev,
+        hp: Math.min(prev.maxHp, prev.hp + healAmount),
+        screen: 'dungeon',
+      };
+    });
+  }, []);
+
+  const handleRestRemoveCards = useCallback((cardIds: string[]) => {
+    setState((prev: GameState) => {
+      const newDeck = prev.deck.filter(c => !cardIds.includes(c.id));
+      return {
+        ...prev,
+        deck: newDeck,
+        screen: 'dungeon',
+      };
+    });
+  }, []);
+
+  const handleRestSkip = useCallback(() => {
+    setState((prev: GameState) => ({
+      ...prev,
+      screen: 'dungeon',
+    }));
+  }, []);
+
   const handleNewGame = useCallback(() => {
     setClearedCells(new Set());
     setState(initGame());
@@ -676,6 +717,15 @@ export default function App() {
           state={state} 
           onSelectCard={handleRewardSelect} 
           onSelectArtifact={handleArtifactSelect}
+        />
+      )}
+
+      {state.screen === 'rest' && (
+        <RestScreen
+          state={state}
+          onHeal={handleRestHeal}
+          onRemoveCards={handleRestRemoveCards}
+          onSkip={handleRestSkip}
         />
       )}
 
