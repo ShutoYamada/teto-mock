@@ -25,6 +25,10 @@ export default function App() {
     dispatch({ type: 'SELECT_CARD', cardId: id });
   }, []);
 
+  const handleRotateCard = useCallback((id: string) => {
+    dispatch({ type: 'ROTATE_CARD', cardId: id });
+  }, []);
+
   const handleCellClick = useCallback(
     (row: number, col: number) => {
       dispatch({
@@ -157,6 +161,7 @@ export default function App() {
           selectedCard={selectedCard}
           onCellClick={handleCellClick}
           onCardClick={handleCardClick}
+          onRotateCard={handleRotateCard}
           onTurnEnd={handleTurnEnd}
           onOpenPile={(type) => { setModalType(type); setShowDeckModal(true); }}
           onTargetClick={(id) => dispatch({ type: 'SET_TARGET_ENEMY', enemyId: id })}

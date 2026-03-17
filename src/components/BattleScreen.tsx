@@ -8,6 +8,7 @@ interface BattleScreenProps {
   selectedCard: TetrominoCard | null;
   onCellClick: (row: number, col: number) => void;
   onCardClick: (id: string) => void;
+  onRotateCard: (id: string) => void;
   onTurnEnd: () => void;
   onOpenPile: (type: 'deck' | 'discard' | 'exile') => void;
   clearedCells: Set<string>;
@@ -20,6 +21,7 @@ export function BattleScreen({
   selectedCard,
   onCellClick,
   onCardClick,
+  onRotateCard,
   onTurnEnd,
   onOpenPile,
   onTargetClick,
@@ -128,6 +130,9 @@ export function BattleScreen({
           selectedCardId={state.selectedCardId}
           onCardClick={(id) => {
              if (state.turn === 'player') onCardClick(id);
+          }}
+          onRotate={(id) => {
+             if (state.turn === 'player') onRotateCard(id);
           }}
         />
       </footer>

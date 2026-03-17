@@ -311,10 +311,59 @@ body {
 
 .hand-cards {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
+  padding: 10px 0;
+}
+
+.hand-card-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.rotate-button {
+  background: linear-gradient(135deg, #c855ff, #00d9ff);
+  border: none;
+  border-radius: 20px;
+  color: white;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 6px 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(200, 85, 255, 0.4);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: rotate-button-appear 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes rotate-button-appear {
+  from {
+    transform: translateY(10px) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.rotate-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 217, 255, 0.6);
+  filter: brightness(1.1);
+}
+
+.rotate-button:active {
+  transform: scale(0.95);
 }
 
 .hand-empty {
