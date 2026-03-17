@@ -27,7 +27,7 @@ export type CellValue = CellData | null;
 
 export type BoardState = CellValue[][];
 
-export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest';
+export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest' | 'shop';
 export type TurnState = 'player' | 'enemy';
 
 export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt';
@@ -74,7 +74,7 @@ export interface Artifact {
   isEventReward: boolean;
 }
 
-export type DungeonNodeType = 'battle' | 'boss' | 'event' | 'elite' | 'rest';
+export type DungeonNodeType = 'battle' | 'boss' | 'event' | 'elite' | 'rest' | 'shop';
 
 export interface DungeonNode {
   id: string;
@@ -120,6 +120,10 @@ export interface GameState {
   // Result state
   rewardCards: TetrominoCard[];
   rewardArtifact: Artifact | null;
+  
+  // Shop state
+  shopCards: TetrominoCard[];
+  shopArtifacts: Artifact[];
   
   score: number;
   clearedLines: number;

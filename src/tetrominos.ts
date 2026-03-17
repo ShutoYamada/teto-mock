@@ -374,3 +374,35 @@ export function generateRewardCards(count: number = 3): TetrominoCard[] {
   }
   return rewards;
 }
+
+export function getCardPrice(card: TetrominoCard): number {
+  switch (card.rarity) {
+    case 'common': return 50;
+    case 'uncommon': return 125;
+    case 'rare': return 250;
+    default: return 50;
+  }
+}
+
+export function generateShopCards(count: number = 5): TetrominoCard[] {
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart'];
+  const shopCards: TetrominoCard[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const type = types[Math.floor(Math.random() * types.length)];
+    const def = TETROMINO_DEFS[type];
+    shopCards.push({
+      id: uid(),
+      type,
+      shape: def.shape,
+      blockTypes: def.blockTypes,
+      color: def.color,
+      glowColor: def.glowColor,
+      cost: def.cost,
+      attack: def.attack,
+      effectText: def.effectText,
+      rarity: def.rarity,
+    });
+  }
+  return shopCards;
+}

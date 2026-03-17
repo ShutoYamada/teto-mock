@@ -44,6 +44,7 @@ export function DungeonScreen({ state, onEnterNode, onOpenDeck }: DungeonScreenP
       case 'elite': return '🔥 Elite';
       case 'event': return '❓ Event';
       case 'rest': return '⛺ Rest';
+      case 'shop': return '💰 Shop';
       default: return '⚔️ Battle';
     }
   }

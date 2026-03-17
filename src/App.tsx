@@ -3,6 +3,7 @@ import { DungeonScreen } from './components/DungeonScreen';
 import { BattleScreen } from './components/BattleScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { RestScreen } from './components/RestScreen';
+import { ShopScreen } from './components/ShopScreen';
 import type { TetrominoCard, Artifact } from './types';
 import { gameReducer, initGame } from './gameReducer';
 
@@ -76,6 +77,18 @@ export default function App() {
 
   const handleRestSkip = useCallback(() => {
     dispatch({ type: 'REST_SKIP' });
+  }, []);
+
+  const handleBuyCard = useCallback((cardId: string) => {
+    dispatch({ type: 'BUY_CARD', cardId });
+  }, []);
+
+  const handleBuyArtifact = useCallback((artifactId: string) => {
+    dispatch({ type: 'BUY_ARTIFACT', artifactId });
+  }, []);
+
+  const handleLeaveShop = useCallback(() => {
+    dispatch({ type: 'LEAVE_SHOP' });
   }, []);
 
   const handleNewGame = useCallback(() => {
@@ -185,6 +198,15 @@ export default function App() {
           onHeal={handleRestHeal}
           onRemoveCards={handleRestRemoveCards}
           onSkip={handleRestSkip}
+        />
+      )}
+
+      {state.screen === 'shop' && (
+        <ShopScreen
+          state={state}
+          onBuyCard={handleBuyCard}
+          onBuyArtifact={handleBuyArtifact}
+          onLeaveShop={handleLeaveShop}
         />
       )}
 

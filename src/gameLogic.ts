@@ -593,6 +593,7 @@ export function generateDungeonMap(): DungeonNode[] {
     for (let i = 0; i < numNodes; i++) {
       let type: DungeonNodeType = 'battle';
       if (isBoss) type = 'boss';
+      else if (d % 6 === 0) type = 'shop';
       else if (d % 4 === 0) type = 'event';
       else if (d % 3 === 0) type = 'elite';
       else if (d % 5 === 0) type = 'rest';
@@ -798,20 +799,45 @@ export function getRandomArtifactByRarity(stage: number, playerArtifacts: Artifa
     else targetRarity = 'rare';
   } else if (stage === 2) {
     if (rand < 65) targetRarity = 'common';
-    else if (rand < 85) targetRarity = 'uncommon';
+    else if (rand < 90) targetRarity = 'uncommon';
     else targetRarity = 'rare';
   } else {
     // Stage 3 and above
-    if (rand < 45) targetRarity = 'common';
+    if (rand < 50) targetRarity = 'common';
     else if (rand < 80) targetRarity = 'uncommon';
     else targetRarity = 'rare';
   }
 
   const rarityPool = pool.filter(a => a.rarity === targetRarity);
-  
-  // If pool for target rarity is empty, fallback to any available
-  const finalPool = rarityPool.length > 0 ? rarityPool : pool;
-  const selected = finalPool[Math.floor(Math.random() * finalPool.length)];
+  if (rarityPool.length === 0) {
+    if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)];
+    return null;
+  }
 
-  return selected;
+  return rarityPool[Math.floor(Math.random() * rarityPool.length)];
+}
+
+export function getArtifactPrice(artifact: Artifact): number {
+  switch (artifact.rarity) {
+    case 'common': return 100;
+    case 'uncommon': return 200;
+    case 'rare': return 300;
+    case 'boss': return 0;
+    default: return 100;
+  }
+}
+
+export function generateShopArtifacts(playerArtifacts: Artifact[], count: number = 3): Artifact[] {
+  const ownedIds = new Set(playerArtifacts.map(a => a.id));
+  const pool = Object.entries(ARTIFACT_DEFS)
+    .filter(([id, def]) => def.isShopSale && !ownedIds.has(id))
+    .map(([id, def]) => ({ id, ...def } as Artifact));
+
+  // Shuffle and slice
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  
+  return pool.slice(0, count);
 }

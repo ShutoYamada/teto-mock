@@ -1,5 +1,5 @@
 import { GameState, TetrominoCard, Artifact, BoardState, Enemy, Status } from './types';
-import { buildDeck, generateRewardCards } from './tetrominos';
+import { buildDeck, generateRewardCards, generateShopCards, getCardPrice } from './tetrominos';
 import {
   createEmptyBoard,
   canPlaceCard,
@@ -14,6 +14,8 @@ import {
   BOARD_SIZE,
   createArtifact,
   getRandomArtifactByRarity,
+  generateShopArtifacts,
+  getArtifactPrice,
 } from './gameLogic';
 import { createDamagePipelineAndCalculate } from './battle/events/DamagePipeline';
 
@@ -31,7 +33,10 @@ export type GameCommand =
   | { type: 'REST_SKIP' }
   | { type: 'NEW_GAME' }
   | { type: 'ROTATE_CARD'; cardId: string }
-  | { type: 'CANCEL_SELECTION' };
+  | { type: 'CANCEL_SELECTION' }
+  | { type: 'BUY_CARD'; cardId: string }
+  | { type: 'BUY_ARTIFACT'; artifactId: string }
+  | { type: 'LEAVE_SHOP' };
 
 export function initGame(): GameState {
   const deck = buildDeck();
@@ -59,6 +64,8 @@ export function initGame(): GameState {
     dungeonMap: generateDungeonMap(),
     currentNodeId: null,
     rewardCards: [],
+    shopCards: [],
+    shopArtifacts: [],
     score: 0,
     clearedLines: 0,
     artifacts: [
@@ -96,6 +103,15 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
           screen: 'rest',
           currentNodeId: command.nodeId,
           stage: depth + 1,
+        };
+      } else if (targetNode?.type === 'shop') {
+        return {
+          ...state,
+          screen: 'shop',
+          currentNodeId: command.nodeId,
+          stage: depth + 1,
+          shopCards: generateShopCards(5),
+          shopArtifacts: generateShopArtifacts(state.artifacts, 3),
         };
       }
       
@@ -555,6 +571,49 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
     }
 
     case 'REST_SKIP': {
+      return {
+        ...state,
+        screen: 'dungeon',
+      };
+    }
+
+    case 'BUY_CARD': {
+      const cardIndex = state.shopCards.findIndex(c => c.id === command.cardId);
+      if (cardIndex === -1) return state;
+      const card = state.shopCards[cardIndex];
+      const price = getCardPrice(card);
+      if (state.gold < price) return state;
+      
+      const newShopCards = [...state.shopCards];
+      newShopCards.splice(cardIndex, 1);
+      
+      return {
+        ...state,
+        gold: state.gold - price,
+        deck: [...state.deck, card],
+        shopCards: newShopCards,
+      };
+    }
+
+    case 'BUY_ARTIFACT': {
+      const artifactIndex = state.shopArtifacts.findIndex(a => a.id === command.artifactId);
+      if (artifactIndex === -1) return state;
+      const artifact = state.shopArtifacts[artifactIndex];
+      const price = getArtifactPrice(artifact);
+      if (state.gold < price) return state;
+      
+      const newShopArtifacts = [...state.shopArtifacts];
+      newShopArtifacts.splice(artifactIndex, 1);
+      
+      return {
+        ...state,
+        gold: state.gold - price,
+        artifacts: [...state.artifacts, artifact],
+        shopArtifacts: newShopArtifacts,
+      };
+    }
+
+    case 'LEAVE_SHOP': {
       return {
         ...state,
         screen: 'dungeon',
