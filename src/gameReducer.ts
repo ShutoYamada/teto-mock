@@ -1,4 +1,4 @@
-import { GameState, TetrominoCard, Artifact, BoardState, Enemy, Status } from './types';
+import { GameState, TetrominoCard, Artifact, BoardState, Enemy, Status, BlockType } from './types';
 import { buildDeck, generateRewardCards, generateShopCards, getCardPrice } from './tetrominos';
 import {
   createEmptyBoard,
@@ -71,7 +71,8 @@ export function initGame(): GameState {
     artifacts: [
       createArtifact('brave_sword'),
       createArtifact('abacus'),
-      createArtifact('champion_glove')
+      createArtifact('champion_glove'),
+      createArtifact('mana_stone')
     ], // Initially give artifacts for testing
     rewardArtifact: null,
   };
@@ -118,10 +119,16 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       const enemies = getEnemyEncounter(depth + 1, depth === 14 ? 'boss' : (depth % 3 === 0 && depth > 0 ? 'elite' : 'normal'));
       const targetEnemyId = enemies[0]?.id || null;
       
+      let board = createEmptyBoard();
+      if (state.artifacts.some(a => a.id === 'mana_stone')) {
+        board[0][0] = { type: 'I', blockType: 'mana' as BlockType };
+        board[BOARD_SIZE - 1][BOARD_SIZE - 1] = { type: 'I', blockType: 'mana' as BlockType };
+      }
+
       return {
         ...state,
         screen: 'battle',
-        board: createEmptyBoard(),
+        board,
         hand,
         deck,
         discardPile: [],

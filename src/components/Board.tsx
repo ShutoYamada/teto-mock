@@ -139,9 +139,10 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                               blockType === 'border' ? '➖' :
                               blockType === 'stripe' ? '｜' :
                               blockType === 'trash' ? '🗑️' :
-                              blockType === 'combo' ? '➕' :
-                              blockType === 'heart' ? '❤️' :
-                              blockType === 'mana' ? '💧' : previewBlockIcon;
+                               blockType === 'combo' ? '➕' :
+                               blockType === 'heart' ? '❤️' :
+                               blockType === 'hard' ? '🪨' :
+                               blockType === 'mana' ? '💧' : previewBlockIcon;
 
             let cellClass = 'board-cell';
             if (isPreview) cellClass += ' board-cell--preview';

@@ -162,7 +162,12 @@ export function clearLines(board: BoardState): ClearResult {
   // Execute Clearing
   const newBoard = board.map((row, r) =>
     row.map((cell, c) => {
-      if (cellsToClear.has(`${r},${c}`)) return null;
+      if (cellsToClear.has(`${r},${c}`)) {
+        if (cell?.blockType === 'hard') {
+          return { ...cell, blockType: 'normal' as BlockType };
+        }
+        return null;
+      }
       return cell;
     })
   );
@@ -766,6 +771,14 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     name: 'ハサミ',
     rarity: 'rare',
     description: '休憩所でカード削除を選択した場合の効果を「現在のデッキからプレイヤーが選択した2枚までのカードをゲーム中永続的に削除する」に変更する',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
+  mana_stone: {
+    name: 'マナの原石',
+    rarity: 'uncommon',
+    description: '戦闘開始時の初期盤面の左上と右下に1つずつマナブロックを配置する',
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,

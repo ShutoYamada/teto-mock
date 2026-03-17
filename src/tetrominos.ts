@@ -227,6 +227,22 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "全マスハートブロック(消滅時HPを3回復する)",
     rarity: "uncommon",
   },
+  Obsidian: {
+    shape: [
+      [true, true],
+      [true, true],
+    ],
+    blockTypes: [
+      ['hard', 'hard'],
+      ['hard', 'hard'],
+    ],
+    color: '#303030',
+    glowColor: 'rgba(48, 48, 48, 0.5)',
+    cost: 1,
+    attack: 5,
+    effectText: "全マスハードブロック(消滅時、通常ブロックに変化)",
+    rarity: "uncommon",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
@@ -352,7 +368,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(count: number = 3): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian'];
   const rewards: TetrominoCard[] = [];
   
   // Pick X random cards for drafting
@@ -385,7 +401,7 @@ export function getCardPrice(card: TetrominoCard): number {
 }
 
 export function generateShopCards(count: number = 5): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian'];
   const shopCards: TetrominoCard[] = [];
   
   for (let i = 0; i < count; i++) {
