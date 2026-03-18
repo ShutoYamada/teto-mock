@@ -27,8 +27,10 @@ export type CellValue = CellData | null;
 
 export type BoardState = CellValue[][];
 
-export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest' | 'shop';
+export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest' | 'shop' | 'event';
 export type TurnState = 'player' | 'enemy';
+
+export type GameEventId = 'assault';
 
 export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt';
 
@@ -116,6 +118,7 @@ export interface GameState {
   stage: number;
   dungeonMap: DungeonNode[];
   currentNodeId: string | null; // null means at the start (depth 0), ready to pick a depth 1 node
+  currentEventId: GameEventId | null;
   
   // Result state
   rewardCards: TetrominoCard[];

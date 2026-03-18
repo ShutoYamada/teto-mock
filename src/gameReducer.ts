@@ -36,7 +36,9 @@ export type GameCommand =
   | { type: 'CANCEL_SELECTION' }
   | { type: 'BUY_CARD'; cardId: string }
   | { type: 'BUY_ARTIFACT'; artifactId: string }
-  | { type: 'LEAVE_SHOP' };
+  | { type: 'LEAVE_SHOP' }
+  | { type: 'EVENT_ASSAULT_FIGHT' }
+  | { type: 'EVENT_ASSAULT_FLEE' };
 
 export function initGame(): GameState {
   const deck = buildDeck();
@@ -63,6 +65,7 @@ export function initGame(): GameState {
     stage: 1,
     dungeonMap: generateDungeonMap(),
     currentNodeId: null,
+    currentEventId: null,
     rewardCards: [],
     shopCards: [],
     shopArtifacts: [],
@@ -114,6 +117,26 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
           shopCards: generateShopCards(5),
           shopArtifacts: generateShopArtifacts(state.artifacts, 3),
         };
+      } else if (targetNode?.type === 'event') {
+        const isShop = Math.random() < 0.1;
+        if (isShop) {
+          return {
+            ...state,
+            screen: 'shop',
+            currentNodeId: command.nodeId,
+            stage: depth + 1,
+            shopCards: generateShopCards(5),
+            shopArtifacts: generateShopArtifacts(state.artifacts, 3),
+          };
+        } else {
+          return {
+            ...state,
+            screen: 'event',
+            currentNodeId: command.nodeId,
+            currentEventId: 'assault',
+            stage: depth + 1,
+          };
+        }
       }
       
       const enemies = getEnemyEncounter(depth + 1, depth === 14 ? 'boss' : (depth % 3 === 0 && depth > 0 ? 'elite' : 'normal'));
@@ -624,6 +647,55 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       return {
         ...state,
         screen: 'dungeon',
+      };
+    }
+
+    case 'EVENT_ASSAULT_FIGHT': {
+      const depth = state.stage - 1;
+      const enemies = getEnemyEncounter(depth + 1, 'normal');
+      const targetEnemyId = enemies[0]?.id || null;
+      
+      let board = createEmptyBoard();
+      if (state.artifacts.some(a => a.id === 'mana_stone')) {
+        board[0][0] = { type: 'I', blockType: 'mana' as BlockType };
+        board[BOARD_SIZE - 1][BOARD_SIZE - 1] = { type: 'I', blockType: 'mana' as BlockType };
+      }
+
+      let deck = [...state.deck];
+      if (deck.length < 7) deck = buildDeck();
+      
+      let baseHandSize = 7;
+      if (state.artifacts.some(a => a.id === 'devil_statue')) {
+        baseHandSize -= 1;
+      }
+      
+      const hand = deck.splice(0, baseHandSize);
+
+      return {
+        ...state,
+        screen: 'battle',
+        board,
+        hand,
+        deck,
+        discardPile: [],
+        exilePile: [],
+        hp: state.hp,
+        mp: state.maxMp,
+        shield: 0,
+        turn: 'player',
+        combo: 0,
+        enemies,
+        targetEnemyId,
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_ASSAULT_FLEE': {
+      return {
+        ...state,
+        screen: 'dungeon',
+        gold: Math.max(0, state.gold - 50),
+        currentEventId: null,
       };
     }
 

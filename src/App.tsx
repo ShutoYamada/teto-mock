@@ -4,6 +4,7 @@ import { BattleScreen } from './components/BattleScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { RestScreen } from './components/RestScreen';
 import { ShopScreen } from './components/ShopScreen';
+import { EventScreen } from './components/EventScreen';
 import type { TetrominoCard, Artifact } from './types';
 import { gameReducer, initGame } from './gameReducer';
 
@@ -36,7 +37,7 @@ export default function App() {
         type: 'PLACE_CARD',
         row,
         col,
-        damageResultCallback: (damage, bombCount, cleared) => {
+        damageResultCallback: (damage, _bombCount, cleared) => {
           if (cleared.size > 0) {
              setClearedCells(cleared);
              setTimeout(() => setClearedCells(new Set()), 500);
@@ -207,6 +208,13 @@ export default function App() {
           onBuyCard={handleBuyCard}
           onBuyArtifact={handleBuyArtifact}
           onLeaveShop={handleLeaveShop}
+        />
+      )}
+
+      {state.screen === 'event' && (
+        <EventScreen 
+          state={state} 
+          dispatch={dispatch} 
         />
       )}
 
