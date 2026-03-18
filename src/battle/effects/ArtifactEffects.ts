@@ -59,6 +59,13 @@ export const SevenCardEffect: GameEffect = {
   }
 };
 
+export const FortissimoEffect: GameEffect = {
+  id: 'fortissimo',
+  attach(_bus: EventBus) {
+    // Handled in DamagePipeline directly due to complex interaction with resonance blocks
+  }
+};
+
 // Register them all
 export function registerArtifactEffects() {
   globalEffectRegistry.register(BraveSwordEffect);
@@ -66,4 +73,5 @@ export function registerArtifactEffects() {
   globalEffectRegistry.register(FigureEightCharmEffect);
   globalEffectRegistry.register(EliteKillerEffect);
   globalEffectRegistry.register(SevenCardEffect);
+  globalEffectRegistry.register(FortissimoEffect);
 }

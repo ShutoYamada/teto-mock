@@ -97,7 +97,40 @@ export function createDamagePipelineAndCalculate(
     }
   });
 
-  // 4. Attach Dynamic Effects from GameState
+  // 4. Resonance Blocks
+  bus.subscribe((event) => {
+    if (event.type !== 'OnBeforeDamage') return;
+    if (event.card) {
+      let cardResonanceCount = 0;
+      for (let r = 0; r < event.card.shape.length; r++) {
+        for (let c = 0; c < event.card.shape[r].length; c++) {
+          if (event.card.shape[r][c] && event.card.blockTypes?.[r][c] === 'resonance') {
+            cardResonanceCount++;
+          }
+        }
+      }
+
+      if (cardResonanceCount > 0) {
+        let boardResonanceCount = 0;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (event.context.state.board[r][c]?.blockType === 'resonance') {
+              boardResonanceCount++;
+            }
+          }
+        }
+
+        let resonanceBonusPerBlock = boardResonanceCount;
+        if (event.context.state.artifacts.some(a => a.id === 'fortissimo')) {
+          resonanceBonusPerBlock += boardResonanceCount; // "+1 per block" means doubling the board count contribution
+        }
+        
+        event.addend += cardResonanceCount * resonanceBonusPerBlock;
+      }
+    }
+  });
+
+  // 5. Attach Dynamic Effects from GameState
   globalEffectRegistry.applyActiveEffects(bus, state);
 
   // ----- Dispatch Event -----

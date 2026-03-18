@@ -243,6 +243,88 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "全マスハードブロック(消滅時、通常ブロックに変化)",
     rarity: "uncommon",
   },
+  Diamond: {
+    shape: [
+      [false, true, false],
+      [true,  true, true],
+      [false, true, false],
+    ],
+    blockTypes: [
+      ['gold', 'gold', 'gold'],
+      ['gold', 'hard', 'gold'],
+      ['gold', 'gold', 'gold'],
+    ],
+    color: '#E0FFFF',
+    glowColor: 'rgba(224, 255, 255, 0.5)',
+    cost: 1,
+    attack: 6,
+    effectText: "中心がハード、周囲がゴールド(消滅時Gold+5)",
+    rarity: "rare",
+  },
+  SilverBullet: {
+    shape: [
+      [true],
+      [true],
+    ],
+    blockTypes: [
+      ['resonance'],
+      ['gold'],
+    ],
+    color: '#C0C0C0',
+    glowColor: 'rgba(192, 192, 192, 0.5)',
+    cost: 1,
+    attack: 5,
+    effectText: "共鳴1、ゴールド1",
+    rarity: "rare",
+  },
+  Note: {
+    shape: [
+      [true],
+    ],
+    blockTypes: [
+      ['resonance'],
+    ],
+    color: '#FF69B4',
+    glowColor: 'rgba(255, 105, 180, 0.5)',
+    cost: 0,
+    attack: 0,
+    effectText: "共鳴ブロック(配置済み共鳴数×(1+強化)ダメ加算)",
+    rarity: "common",
+  },
+  Cymbal: {
+    shape: [
+      [true, true],
+      [true, true],
+    ],
+    blockTypes: [
+      ['resonance', 'resonance'],
+      ['resonance', 'resonance'],
+    ],
+    color: '#FFD700',
+    glowColor: 'rgba(255, 215, 0, 0.5)',
+    cost: 2,
+    attack: 4,
+    effectText: "全マス共鳴ブロック",
+    rarity: "uncommon",
+  },
+  Flute: {
+    shape: [
+      [true],
+      [true],
+      [true],
+    ],
+    blockTypes: [
+      ['resonance'],
+      ['normal'],
+      ['resonance'],
+    ],
+    color: '#F0F8FF',
+    glowColor: 'rgba(240, 248, 255, 0.5)',
+    cost: 1,
+    attack: 2,
+    effectText: "上下が共鳴ブロック",
+    rarity: "common",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
@@ -368,7 +450,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(count: number = 3): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute'];
   const rewards: TetrominoCard[] = [];
   
   // Pick X random cards for drafting
@@ -401,7 +483,7 @@ export function getCardPrice(card: TetrominoCard): number {
 }
 
 export function generateShopCards(count: number = 5): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute'];
   const shopCards: TetrominoCard[] = [];
   
   for (let i = 0; i < count; i++) {

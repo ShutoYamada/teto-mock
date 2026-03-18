@@ -782,6 +782,14 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,
+  },
+  fortissimo: {
+    name: 'フォルテッシモ',
+    rarity: 'uncommon',
+    description: '共鳴ブロックによるダメージ加算時の、共鳴ブロック1つあたりの加算ダメージをさらに+1する',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   }
 };
 
