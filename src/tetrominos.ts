@@ -325,6 +325,84 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "上下が共鳴ブロック",
     rarity: "common",
   },
+  Guitar: {
+    shape: [
+      [false, false, true],
+      [true,  true,  true],
+    ],
+    blockTypes: [
+      ['normal', 'normal', 'resonance'],
+      ['resonance', 'resonance', 'resonance'],
+    ],
+    color: '#FF8C00',
+    glowColor: 'rgba(255, 140, 0, 0.5)',
+    cost: 3,
+    attack: 18,
+    effectText: "すべて共鳴ブロックで構成される",
+    rarity: "rare",
+  },
+  GravityStone: {
+    shape: [
+      [true],
+    ],
+    blockTypes: [
+      ['gravity_down'],
+    ],
+    color: '#A9A9A9',
+    glowColor: 'rgba(169, 169, 169, 0.5)',
+    cost: 1,
+    attack: 3,
+    effectText: "重力ブロック(下)で構成される(消滅時ブロック落下)",
+    rarity: "uncommon",
+  },
+  FloatingStone: {
+    shape: [
+      [true],
+    ],
+    blockTypes: [
+      ['gravity_up'],
+    ],
+    color: '#87CEEB',
+    glowColor: 'rgba(135, 206, 235, 0.5)',
+    cost: 1,
+    attack: 3,
+    effectText: "重力ブロック(上)で構成される(消滅時ブロック上昇)",
+    rarity: "uncommon",
+  },
+  LeftRight: {
+    shape: [
+      [true, false],
+      [false, true],
+    ],
+    blockTypes: [
+      ['gravity_left', 'normal'],
+      ['normal', 'gravity_right'],
+    ],
+    color: '#BA55D3',
+    glowColor: 'rgba(186, 85, 211, 0.5)',
+    cost: 1,
+    attack: 3,
+    effectText: "重力ブロック(左)と重力ブロック(右)で構成される",
+    rarity: "uncommon",
+  },
+  LookThatWay: {
+    shape: [
+      [false, true, false],
+      [true,  false, true],
+      [false, true, false],
+    ],
+    blockTypes: [
+      ['normal', 'gravity_up', 'normal'],
+      ['gravity_left', 'normal', 'gravity_right'],
+      ['normal', 'gravity_down', 'normal'],
+    ],
+    color: '#FF1493',
+    glowColor: 'rgba(255, 20, 147, 0.5)',
+    cost: 2,
+    attack: 11,
+    effectText: "上下左右の重力ブロックで構成される",
+    rarity: "rare",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
@@ -450,7 +528,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(count: number = 3): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute', 'Guitar', 'GravityStone', 'FloatingStone', 'LeftRight', 'LookThatWay'];
   const rewards: TetrominoCard[] = [];
   
   // Pick X random cards for drafting
@@ -483,7 +561,7 @@ export function getCardPrice(card: TetrominoCard): number {
 }
 
 export function generateShopCards(count: number = 5): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute', 'Guitar', 'GravityStone', 'FloatingStone', 'LeftRight', 'LookThatWay'];
   const shopCards: TetrominoCard[] = [];
   
   for (let i = 0; i < count; i++) {

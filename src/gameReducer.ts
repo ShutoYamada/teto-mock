@@ -206,7 +206,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
       const boardAfterPlace = placeCard(state.board, selectedCard, command.row, command.col);
       const clearResult = clearLines(boardAfterPlace);
-      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount } = clearResult;
+      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount } = clearResult;
       
       let combo = state.combo;
       const cleared = new Set<string>();
@@ -277,13 +277,18 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         }
       }
       
-      const totalTargetDamage = damage + bombCount * 10;
+      let antigravityDamage = 0;
+      if (gravityCount > 0 && state.artifacts.some(a => a.id === 'antigravity_machine')) {
+        antigravityDamage = gravityCount * 5;
+      }
+
+      const totalTargetDamage = damage + bombCount * 10 + antigravityDamage;
       if (command.damageResultCallback && totalTargetDamage > 0) {
         command.damageResultCallback(totalTargetDamage, bombCount, cleared);
       }
 
       let newEnemies = state.enemies.map(e => {
-        let enemyDamage = bombCount * 10;
+        let enemyDamage = bombCount * 10 + antigravityDamage;
         if (e.id === state.targetEnemyId || bowCount > 0) {
            enemyDamage += damage;
         }

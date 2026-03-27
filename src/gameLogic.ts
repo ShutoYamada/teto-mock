@@ -61,6 +61,7 @@ export interface ClearResult {
   comboCount: number;
   bowCount: number;
   heartCount: number;
+  gravityCount: number;
 }
 
 export function clearLines(board: BoardState): ClearResult {
@@ -79,7 +80,7 @@ export function clearLines(board: BoardState): ClearResult {
 
   const clearedCount = fullRows.size + fullCols.size;
   if (clearedCount === 0) {
-    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0, bowCount: 0, heartCount: 0 };
+    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0, bowCount: 0, heartCount: 0, gravityCount: 0 };
   }
 
   const cellsToClear = new Set<string>();
@@ -143,7 +144,14 @@ export function clearLines(board: BoardState): ClearResult {
   goldCount = 0;
   borderCount = 0;
   stripeCount = 0;
+  comboCount = 0;
   bowCount = 0;
+  heartCount = 0;
+  let gravityCount = 0;
+  
+  interface GravityAction { r: number; c: number; type: BlockType }
+  const gravityActions: GravityAction[] = [];
+  
   cellsToClear.forEach((pos) => {
     const [r, c] = pos.split(',').map(Number);
     const cellData = board[r][c];
@@ -156,11 +164,15 @@ export function clearLines(board: BoardState): ClearResult {
       if (cellData.blockType === 'combo') comboCount++;
       if (cellData.blockType === 'bow' && (fullRows.has(r) || fullCols.has(c))) bowCount++;
       if (cellData.blockType === 'heart') heartCount++;
+      if (cellData.blockType.startsWith('gravity_')) {
+        gravityCount++;
+        gravityActions.push({ r, c, type: cellData.blockType });
+      }
     }
   });
 
   // Execute Clearing
-  const newBoard = board.map((row, r) =>
+  let newBoard = board.map((row, r) =>
     row.map((cell, c) => {
       if (cellsToClear.has(`${r},${c}`)) {
         if (cell?.blockType === 'hard') {
@@ -172,7 +184,63 @@ export function clearLines(board: BoardState): ClearResult {
     })
   );
 
-  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount };
+  gravityActions.sort((a, b) => a.r - b.r || a.c - b.c);
+  for (const action of gravityActions) {
+    newBoard = applyGravity(newBoard, action.type);
+  }
+
+  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount };
+}
+
+function applyGravity(board: BoardState, type: BlockType): BoardState {
+  const size = board.length;
+  const newBoard = createEmptyBoard(size);
+  
+  if (type === 'gravity_down') {
+    for (let c = 0; c < size; c++) {
+      let writeR = size - 1;
+      for (let r = size - 1; r >= 0; r--) {
+        if (board[r][c] !== null) {
+          newBoard[writeR][c] = board[r][c];
+          writeR--;
+        }
+      }
+    }
+  } else if (type === 'gravity_up') {
+    for (let c = 0; c < size; c++) {
+      let writeR = 0;
+      for (let r = 0; r < size; r++) {
+        if (board[r][c] !== null) {
+          newBoard[writeR][c] = board[r][c];
+          writeR++;
+        }
+      }
+    }
+  } else if (type === 'gravity_left') {
+    for (let r = 0; r < size; r++) {
+      let writeC = 0;
+      for (let c = 0; c < size; c++) {
+        if (board[r][c] !== null) {
+          newBoard[r][writeC] = board[r][c];
+          writeC++;
+        }
+      }
+    }
+  } else if (type === 'gravity_right') {
+    for (let r = 0; r < size; r++) {
+      let writeC = size - 1;
+      for (let c = size - 1; c >= 0; c--) {
+        if (board[r][c] !== null) {
+          newBoard[r][writeC] = board[r][c];
+          writeC--;
+        }
+      }
+    }
+  } else {
+    return board;
+  }
+  
+  return newBoard;
 }
 
 export function isGameOver(hand: TetrominoCard[], board: BoardState): boolean {
@@ -787,6 +855,14 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     name: 'フォルテッシモ',
     rarity: 'uncommon',
     description: '共鳴ブロックによるダメージ加算時の、共鳴ブロック1つあたりの加算ダメージをさらに+1する',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
+  antigravity_machine: {
+    name: '半重力装置',
+    rarity: 'uncommon',
+    description: '重力ブロックの消滅時効果が発生する度に敵全体に5ダメージを与える',
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,

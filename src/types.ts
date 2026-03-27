@@ -1,8 +1,8 @@
 export type TetrominoType = DefaultTetrominoType | CustomTetrominoType; 
 export type DefaultTetrominoType = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
-export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo' | 'Jab' | 'Bow' | 'Heart' | 'BigHeart' | 'Obsidian' | 'Diamond' | 'SilverBullet' | 'Note' | 'Cymbal' | 'Flute';
+export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo' | 'Jab' | 'Bow' | 'Heart' | 'BigHeart' | 'Obsidian' | 'Diamond' | 'SilverBullet' | 'Note' | 'Cymbal' | 'Flute' | 'Guitar' | 'GravityStone' | 'FloatingStone' | 'LeftRight' | 'LookThatWay';
 
-export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo' | 'bow' | 'heart' | 'hard' | 'resonance';
+export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo' | 'bow' | 'heart' | 'hard' | 'resonance' | 'gravity_down' | 'gravity_up' | 'gravity_right' | 'gravity_left';
 
 export interface TetrominoCard {
   id: string;
