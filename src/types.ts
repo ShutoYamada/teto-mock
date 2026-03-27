@@ -32,7 +32,7 @@ export type TurnState = 'player' | 'enemy';
 
 export type GameEventId = 'assault';
 
-export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt';
+export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt' | 'draw_down' | 'charging';
 
 export interface Status {
   type: StatusType;
@@ -43,6 +43,7 @@ export interface EnemyAction {
   name: string;
   description: string;
   damageRange?: [number, number];
+  count?: number;
   effect?: (enemy: Enemy, state: GameState) => Partial<Enemy> | Partial<GameState>;
   weight: number;
 }
@@ -57,6 +58,7 @@ export interface Enemy {
   intent: {
     actionName: string;
     damage?: number;
+    count?: number;
     description: string;
   };
   statuses: Status[];

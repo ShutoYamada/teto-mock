@@ -50,7 +50,7 @@ export function BattleScreen({
           <div className="player-statuses" style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
             {state.statuses.map((s, idx) => (
               <div key={idx} className="status-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,224,0,0.2)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,224,0,0.4)' }}>
-                {s.type === 'power' ? '💪' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : '✨'}{s.value}
+                {s.type === 'power' ? '💪' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : s.type === 'draw_down' ? '🎴↓' : '✨'}{s.value}
               </div>
             ))}
           </div>
@@ -85,7 +85,7 @@ export function BattleScreen({
                 <div className="stat-row title">{enemy.name}</div>
                 <div className="stat-row">HP: {enemy.hp} / {enemy.maxHp}</div>
                 <div className="stat-row intent" style={{ color: '#ffcc00' }}>
-                  {enemy.intent.actionName} {enemy.intent.damage ? `(${enemy.intent.damage}ダメ)` : ''}
+                  {enemy.intent.actionName} {enemy.intent.damage ? `(${enemy.intent.damage}${enemy.intent.count && enemy.intent.count > 1 ? `x${enemy.intent.count}` : ''}ダメ)` : ''}
                 </div>
                 <div className="stat-row description" style={{ fontSize: '0.7rem', color: '#ccc' }}>
                   {enemy.intent.description}
@@ -93,7 +93,7 @@ export function BattleScreen({
                 <div className="enemy-statuses" style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                   {enemy.statuses.map((s, idx) => (
                     <div key={idx} className="status-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: '4px' }}>
-                      {s.type === 'fury' ? '🔥' : s.type === 'defense' ? '🛡️' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : s.type === 'taunt' ? '📢' : '✨'}{s.value}
+                      {s.type === 'fury' ? '🔥' : s.type === 'defense' ? '🛡️' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : s.type === 'taunt' ? '📢' : s.type === 'charging' ? '⚡' : '✨'}{s.value}
                     </div>
                   ))}
                 </div>

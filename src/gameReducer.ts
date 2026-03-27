@@ -396,7 +396,11 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         }
       }
 
-      const enemyDamage = state.enemies.reduce((acc, enemy) => acc + enemy.nextAttack, 0);
+      const enemyDamage = state.enemies.reduce((acc, enemy) => {
+        const damagePerHit = enemy.nextAttack;
+        const count = enemy.intent.count || 1;
+        return acc + (damagePerHit * count);
+      }, 0);
       const totalDamage = spikeDamage + enemyDamage;
       
       let actualDamage = totalDamage;
@@ -424,9 +428,16 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       let newDiscardPile = [...state.discardPile, ...state.hand];
 
       let targetDraw = 5;
+      const drawDown = state.statuses.find(s => s.type === 'draw_down');
+      if (drawDown) {
+        targetDraw -= drawDown.value;
+      }
+      
       if (state.artifacts.some(a => a.id === 'devil_statue')) {
         targetDraw -= 1;
       }
+      
+      targetDraw = Math.max(1, targetDraw);
 
       for (let i = 0; i < targetDraw; i++) {
         if (newDeck.length === 0) {
@@ -449,11 +460,12 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
       let currentBoard = state.board;
       let currentGold = state.gold;
+      let currentPlayerStatuses = state.statuses;
       processedEnemies.forEach((enemy, idx) => {
          const template = Object.values(ENEMY_TEMPLATES).find(t => t.name === enemy.name);
          const action = template?.actions.find(a => a.name === enemy.intent.actionName);
          if (action?.effect) {
-            const result = action.effect(enemy, { ...state, board: currentBoard, gold: currentGold, enemies: processedEnemies });
+            const result = action.effect(enemy, { ...state, board: currentBoard, gold: currentGold, enemies: processedEnemies, statuses: currentPlayerStatuses });
             if ('board' in result) {
                currentBoard = result.board as BoardState;
             }
@@ -463,7 +475,28 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
             if ('enemies' in result) {
               processedEnemies = result.enemies as Enemy[];
             }
-            processedEnemies[idx] = { ...processedEnemies[idx], ...result as Partial<Enemy> };
+            if ('statuses' in result && result.statuses !== undefined) {
+              // Check if the result statuses belongs to player or enemy
+              // Action effect can return Partial<Enemy> or Partial<GameState>
+              // Here we assume if it specifies enemies it might be GameState, 
+              // but status is ambiguous. 
+              // For now, if the action is from Valkyrie's "一閃", it should be player.
+              // A better way is to check the return type or context.
+              // Let's assume for now that if it's from an action that intends to affect player, it will be handled.
+              // Actually, looking at other enemies:
+              // - dragon: adds to self.
+              // - captain: adds to other pirates.
+              // - mushroomMan: adds to self.
+              // So most enemies use it for self.
+              // To avoid breaking others, let's distinguish based on action name or just handle both.
+              if (action.name === '一閃') {
+                currentPlayerStatuses = result.statuses as Status[];
+              } else {
+                processedEnemies[idx] = { ...processedEnemies[idx], ...result as Partial<Enemy> };
+              }
+            } else {
+              processedEnemies[idx] = { ...processedEnemies[idx], ...result as Partial<Enemy> };
+            }
          }
       });
 
@@ -499,11 +532,11 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
       const updateStatuses = (statuses: Status[]) => {
         return statuses
-          .map(s => (s.type === 'fallen' || s.type === 'taunt' ? { ...s, value: s.value - 1 } : s))
-          .filter(s => s.value > 0 || (s.type !== 'fallen' && s.type !== 'taunt'));
+          .map(s => (s.type === 'fallen' || s.type === 'taunt' || s.type === 'draw_down' || s.type === 'charging' ? { ...s, value: s.value - 1 } : s))
+          .filter(s => s.value > 0 || (s.type !== 'fallen' && s.type !== 'taunt' && s.type !== 'draw_down' && s.type !== 'charging'));
       };
 
-      const newPlayerStatuses = updateStatuses(state.statuses);
+      const newPlayerStatuses = updateStatuses(currentPlayerStatuses);
       const newEnemiesWithUpdatedStatuses = processedEnemies.map(e => ({
         ...e,
         statuses: updateStatuses(e.statuses)

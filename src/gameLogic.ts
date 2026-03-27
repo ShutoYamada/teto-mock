@@ -526,6 +526,48 @@ export const ENEMY_TEMPLATES: Record<string, {
         weight: 30,
       }
     ]
+  },
+  valkyrie: {
+    name: 'ヴァルキリー',
+    type: 'boss',
+    hpRange: [150, 150],
+    goldReward: 100,
+    actions: [
+      {
+        name: '高速斬撃',
+        description: 'プレイヤーに10ダメージを3回与える',
+        damageRange: [10, 10],
+        count: 3,
+        weight: 35,
+      },
+      {
+        name: '一閃',
+        description: '10ダメージを与え、次のターン開始時にプレイヤーが引くカードが4枚になる',
+        damageRange: [10, 10],
+        effect: (_enemy, _state) => {
+          const statuses = [..._state.statuses];
+          const drawDown = statuses.find(s => s.type === 'draw_down');
+          if (drawDown) drawDown.value += 1;
+          else statuses.push({ type: 'draw_down', value: 1 });
+          return { statuses };
+        },
+        weight: 35,
+      },
+      {
+        name: '力を溜める',
+        description: '自身に憤怒(3)を付与し、次のターンの行動が必ず高速斬撃になる',
+        effect: (enemy) => {
+          const statuses = [...enemy.statuses];
+          const fury = statuses.find(s => s.type === 'fury');
+          if (fury) fury.value += 3;
+          else statuses.push({ type: 'fury', value: 3 });
+          
+          statuses.push({ type: 'charging', value: 1 });
+          return { statuses };
+        },
+        weight: 30,
+      }
+    ]
   }
 };
 
@@ -575,15 +617,21 @@ export function decideNextAction(enemy: Enemy): Enemy {
   let totalWeight = template.actions.reduce((acc, a) => acc + (a.weight || 0), 0);
   if (totalWeight === 0) totalWeight = 1;
 
-  let rand = Math.random() * totalWeight;
   let action = template.actions[0];
-
-  for (const a of template.actions) {
-    if (rand < (a.weight || 0)) {
-      action = a;
-      break;
+  const charging = enemy.statuses.find(s => s.type === 'charging');
+  
+  if (charging) {
+    const forced = template.actions.find(a => a.name === '高速斬撃');
+    if (forced) action = forced;
+  } else {
+    let rand = Math.random() * totalWeight;
+    for (const a of template.actions) {
+      if (rand < (a.weight || 0)) {
+        action = a;
+        break;
+      }
+      rand -= (a.weight || 0);
     }
-    rand -= (a.weight || 0);
   }
   
   let damage = 0;
@@ -603,6 +651,7 @@ export function decideNextAction(enemy: Enemy): Enemy {
     intent: {
       actionName: action.name,
       damage: damage > 0 ? damage : undefined,
+      count: action.count,
       description: action.description
     }
   };
