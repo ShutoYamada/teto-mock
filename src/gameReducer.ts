@@ -1,4 +1,4 @@
-import { GameState, TetrominoCard, Artifact, BoardState, Enemy, Status, BlockType } from './types';
+import { GameState, TetrominoCard, Artifact, BoardState, Enemy, Status, BlockType, GameEventId } from './types';
 import { buildDeck, generateRewardCards, generateShopCards, getCardPrice } from './tetrominos';
 import {
   createEmptyBoard,
@@ -41,7 +41,9 @@ export type GameCommand =
   | { type: 'EVENT_ASSAULT_FIGHT' }
   | { type: 'EVENT_ASSAULT_FLEE' }
   | { type: 'EVENT_MERCHANT_STEAL' }
-  | { type: 'EVENT_MERCHANT_RETURN' };
+  | { type: 'EVENT_MERCHANT_RETURN' }
+  | { type: 'EVENT_FAIRY_MIRROR_DUPLICATE'; cardId: string }
+  | { type: 'EVENT_FAIRY_MIRROR_IGNORE' };
 
 export function initGame(): GameState {
   const deck = buildDeck();
@@ -132,11 +134,13 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
             shopArtifacts: generateShopArtifacts(state.artifacts, 3),
           };
         } else {
+          const events: GameEventId[] = ['assault', 'merchant_drop', 'fairy_mirror'];
+          const randomEvent = events[Math.floor(Math.random() * events.length)];
           return {
             ...state,
             screen: 'event',
             currentNodeId: command.nodeId,
-            currentEventId: 'assault',
+            currentEventId: randomEvent,
             stage: depth + 1,
           };
         }
@@ -295,13 +299,14 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         hammerDamage = hardBlockClearedCount * 5;
       }
 
-      const totalTargetDamage = damage + bombCount * 10 + antigravityDamage + acceleratorDamage + hammerDamage;
+      const bombDamagePerCount = state.artifacts.some(a => a.id === 'gunpowder') ? 15 : 10;
+      const totalTargetDamage = damage + bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage;
       if (command.damageResultCallback && totalTargetDamage > 0) {
         command.damageResultCallback(totalTargetDamage, bombCount, cleared);
       }
 
       let newEnemies = state.enemies.map(e => {
-        let enemyDamage = bombCount * 10 + antigravityDamage + acceleratorDamage + hammerDamage;
+        let enemyDamage = bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage;
         if (e.id === state.targetEnemyId || bowCount > 0) {
            enemyDamage += damage;
         }
@@ -800,6 +805,26 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         ...state,
         screen: 'dungeon',
         gold: state.gold + 50,
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_FAIRY_MIRROR_DUPLICATE': {
+      const cardToDuplicate = state.deck.find(c => c.id === command.cardId);
+      if (!cardToDuplicate) return state;
+      const newCard = { ...cardToDuplicate, id: `card-event-${Math.random().toString(36).substr(2, 9)}` };
+      return {
+        ...state,
+        screen: 'dungeon',
+        deck: [...state.deck, newCard],
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_FAIRY_MIRROR_IGNORE': {
+      return {
+        ...state,
+        screen: 'dungeon',
         currentEventId: null,
       };
     }

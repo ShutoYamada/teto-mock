@@ -30,7 +30,7 @@ export type BoardState = CellValue[][];
 export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest' | 'shop' | 'event';
 export type TurnState = 'player' | 'enemy';
 
-export type GameEventId = 'assault' | 'merchant_drop';
+export type GameEventId = 'assault' | 'merchant_drop' | 'fairy_mirror';
 
 export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt' | 'draw_down' | 'charging';
 

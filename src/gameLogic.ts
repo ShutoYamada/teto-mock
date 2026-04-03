@@ -986,6 +986,14 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,
+  },
+  gunpowder: {
+    name: '火薬',
+    rarity: 'common',
+    description: '爆弾ブロックの効果が「消滅時に周囲8マスを消しつつ敵全体に15追加ダメージを与える」に置き換わる',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   }
 };
 
