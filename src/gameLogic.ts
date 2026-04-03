@@ -607,6 +607,27 @@ export const ENEMY_TEMPLATES: Record<string, {
         weight: 30,
       }
     ]
+  },
+  gigant: {
+    name: '巨人',
+    type: 'normal',
+    hpRange: [100, 100],
+    goldReward: 60,
+    actions: [
+      {
+        name: '強振',
+        description: 'プレイヤーに35ダメージを与える',
+        damageRange: [35, 35],
+        weight: 60,
+      },
+      {
+        name: '連続攻撃',
+        description: 'プレイヤーに10ダメージを2回与える',
+        damageRange: [10, 10],
+        count: 2,
+        weight: 40,
+      }
+    ]
   }
 };
 
@@ -615,6 +636,9 @@ export function getRandomEnemy(stage: number, type: 'normal' | 'elite' | 'boss')
   
   // Filter by stage
   if (type === 'normal') {
+    if (stage === 1) {
+       templates = templates.filter(t => t.name !== '巨人');
+    }
     if (stage === 1 || stage === 2) {
       // Slime, Goblin, Pirate, MushroomMan, Witch
     } else {

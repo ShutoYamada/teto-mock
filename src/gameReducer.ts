@@ -401,10 +401,36 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
     }
 
     case 'END_PLAYER_TURN': {
-      return { ...state, turn: 'enemy', selectedCardId: null };
+      let poisonDamage = 0;
+      const newStatuses = state.statuses.map(s => {
+        if (s.type === 'poison') {
+          poisonDamage += s.value;
+          return { ...s, value: s.value - 1 };
+        }
+        return s;
+      }).filter(s => s.type !== 'poison' || s.value > 0);
+
+      let newHp = state.hp;
+      let nextScreen = state.screen;
+      if (poisonDamage > 0) {
+        newHp = Math.max(0, state.hp - poisonDamage);
+        if (newHp === 0) {
+          nextScreen = 'gameover';
+        }
+      }
+
+      return { 
+        ...state, 
+        turn: 'enemy', 
+        selectedCardId: null,
+        hp: newHp,
+        statuses: newStatuses,
+        screen: nextScreen
+      };
     }
 
     case 'EXECUTE_ENEMY_TURN': {
+      if (state.screen === 'gameover' || state.screen === 'result') return state;
       let spikeDamage = 0;
       for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
@@ -520,7 +546,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
       processedEnemies = processedEnemies.filter(e => e.hp > 0);
 
-      let nextScreen = state.screen;
+      let nextScreen: GameState['screen'] = state.screen;
       let rewardCards: TetrominoCard[] = [];
       let rewardArtifact: Artifact | null = null;
       let finalGold = currentGold;

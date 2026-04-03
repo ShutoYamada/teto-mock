@@ -50,7 +50,7 @@ export function BattleScreen({
           <div className="player-statuses" style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
             {state.statuses.map((s, idx) => (
               <div key={idx} className="status-badge" style={{ fontSize: '0.7rem', background: 'rgba(255,224,0,0.2)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,224,0,0.4)' }}>
-                {s.type === 'power' ? '💪' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : s.type === 'draw_down' ? '🎴↓' : '✨'}{s.value}
+                {s.type === 'power' ? '💪' : s.type === 'reflect' ? '🪞' : s.type === 'fallen' ? '🥴' : s.type === 'draw_down' ? '🎴↓' : s.type === 'poison' ? '🧪' : '✨'}{s.value}
               </div>
             ))}
           </div>

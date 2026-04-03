@@ -32,7 +32,7 @@ export type TurnState = 'player' | 'enemy';
 
 export type GameEventId = 'assault' | 'merchant_drop' | 'fairy_mirror';
 
-export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt' | 'draw_down' | 'charging';
+export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt' | 'draw_down' | 'charging' | 'poison';
 
 export interface Status {
   type: StatusType;
