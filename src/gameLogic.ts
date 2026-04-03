@@ -572,6 +572,41 @@ export const ENEMY_TEMPLATES: Record<string, {
         weight: 30,
       }
     ]
+  },
+  slimeQueen: {
+    name: 'スライムクイーン',
+    type: 'elite',
+    hpRange: [60, 60],
+    goldReward: 100,
+    actions: [
+      {
+        name: '分裂',
+        description: 'スライム(HP 20)を出現させる',
+        effect: (_enemy: Enemy, state: GameState) => {
+          const slime: Enemy = {
+            id: `enemy-slime-${Math.random().toString(36).substr(2, 9)}`,
+            name: 'スライム',
+            type: 'normal',
+            hp: 20,
+            maxHp: 20,
+            goldReward: 30,
+            nextAttack: 0,
+            statuses: [],
+            intent: { actionName: '待機', description: '様子をうかがっている' }
+          };
+          const nextSlime = decideNextAction(slime);
+          return { enemies: [...state.enemies, nextSlime] };
+        },
+        weight: 70,
+      },
+      {
+        name: '攻撃',
+        description: 'プレイヤーに4ダメージを3回与える',
+        damageRange: [4, 4],
+        count: 3,
+        weight: 30,
+      }
+    ]
   }
 };
 
