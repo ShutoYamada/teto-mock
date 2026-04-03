@@ -18,6 +18,7 @@ import {
   getArtifactPrice,
 } from './gameLogic';
 import { createDamagePipelineAndCalculate } from './battle/events/DamagePipeline';
+import { TETROMINO_DEFS } from './tetrominos';
 
 export type GameCommand =
   | { type: 'START_BATTLE'; nodeId: string }
@@ -38,7 +39,9 @@ export type GameCommand =
   | { type: 'BUY_ARTIFACT'; artifactId: string }
   | { type: 'LEAVE_SHOP' }
   | { type: 'EVENT_ASSAULT_FIGHT' }
-  | { type: 'EVENT_ASSAULT_FLEE' };
+  | { type: 'EVENT_ASSAULT_FLEE' }
+  | { type: 'EVENT_MERCHANT_STEAL' }
+  | { type: 'EVENT_MERCHANT_RETURN' };
 
 export function initGame(): GameState {
   const deck = buildDeck();
@@ -206,7 +209,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
       const boardAfterPlace = placeCard(state.board, selectedCard, command.row, command.col);
       const clearResult = clearLines(boardAfterPlace);
-      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount } = clearResult;
+      const { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount, hardBlockClearedCount } = clearResult;
       
       let combo = state.combo;
       const cleared = new Set<string>();
@@ -281,14 +284,24 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       if (gravityCount > 0 && state.artifacts.some(a => a.id === 'antigravity_machine')) {
         antigravityDamage = gravityCount * 5;
       }
+      
+      let acceleratorDamage = 0;
+      if (drawnCardsCount > 0 && state.artifacts.some(a => a.id === 'accelerator')) {
+        acceleratorDamage = drawnCardsCount * 3;
+      }
+      
+      let hammerDamage = 0;
+      if (hardBlockClearedCount > 0 && state.artifacts.some(a => a.id === 'hammer')) {
+        hammerDamage = hardBlockClearedCount * 5;
+      }
 
-      const totalTargetDamage = damage + bombCount * 10 + antigravityDamage;
+      const totalTargetDamage = damage + bombCount * 10 + antigravityDamage + acceleratorDamage + hammerDamage;
       if (command.damageResultCallback && totalTargetDamage > 0) {
         command.damageResultCallback(totalTargetDamage, bombCount, cleared);
       }
 
       let newEnemies = state.enemies.map(e => {
-        let enemyDamage = bombCount * 10 + antigravityDamage;
+        let enemyDamage = bombCount * 10 + antigravityDamage + acceleratorDamage + hammerDamage;
         if (e.id === state.targetEnemyId || bowCount > 0) {
            enemyDamage += damage;
         }
@@ -542,6 +555,23 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         statuses: updateStatuses(e.statuses)
       }));
 
+      if (state.artifacts.some(a => a.id === 'rolling_stone')) {
+        const emptyCells: {r: number, c: number}[] = [];
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (currentBoard[r][c] === null) emptyCells.push({r, c});
+          }
+        }
+        
+        for (let i = 0; i < 2 && emptyCells.length > 0; i++) {
+          const idx = Math.floor(Math.random() * emptyCells.length);
+          const cell = emptyCells[idx];
+          emptyCells.splice(idx, 1);
+          currentBoard = currentBoard.map(row => [...row]);
+          currentBoard[cell.r][cell.c] = { type: 'I', blockType: 'hard' as BlockType };
+        }
+      }
+
       // Ensure target is valid (respect Taunt)
       let nextTargetEnemyId = state.targetEnemyId;
       const tauntingEnemy = newEnemiesWithUpdatedStatuses.find(e => e.statuses.some(s => s.type === 'taunt'));
@@ -733,6 +763,43 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         ...state,
         screen: 'dungeon',
         gold: Math.max(0, state.gold - 50),
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_MERCHANT_STEAL': {
+      const customMinos: import('./types').CustomTetrominoType[] = [
+         'Sword', 'Shield', 'Mana', 'Cross', 'SquareBomb', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute', 'Guitar', 'GravityStone', 'FloatingStone', 'LeftRight', 'LookThatWay', 'Booster', 'RocketHead'
+      ];
+      const randomMinoType = customMinos[Math.floor(Math.random() * customMinos.length)];
+      
+      const tetroDef = TETROMINO_DEFS[randomMinoType];
+      const newCard: TetrominoCard = {
+        id: `card-event-${Math.random().toString(36).substr(2, 9)}`,
+        type: randomMinoType,
+        shape: tetroDef.shape,
+        blockTypes: tetroDef.blockTypes,
+        color: tetroDef.color,
+        glowColor: tetroDef.glowColor,
+        cost: tetroDef.cost,
+        attack: tetroDef.attack,
+        effectText: tetroDef.effectText,
+        rarity: tetroDef.rarity,
+      };
+
+      return {
+        ...state,
+        screen: 'dungeon',
+        deck: [...state.deck, newCard],
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_MERCHANT_RETURN': {
+      return {
+        ...state,
+        screen: 'dungeon',
+        gold: state.gold + 50,
         currentEventId: null,
       };
     }

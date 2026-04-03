@@ -1,6 +1,6 @@
 export type TetrominoType = DefaultTetrominoType | CustomTetrominoType; 
 export type DefaultTetrominoType = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
-export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo' | 'Jab' | 'Bow' | 'Heart' | 'BigHeart' | 'Obsidian' | 'Diamond' | 'SilverBullet' | 'Note' | 'Cymbal' | 'Flute' | 'Guitar' | 'GravityStone' | 'FloatingStone' | 'LeftRight' | 'LookThatWay';
+export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo' | 'Jab' | 'Bow' | 'Heart' | 'BigHeart' | 'Obsidian' | 'Diamond' | 'SilverBullet' | 'Note' | 'Cymbal' | 'Flute' | 'Guitar' | 'GravityStone' | 'FloatingStone' | 'LeftRight' | 'LookThatWay' | 'Booster' | 'RocketHead';
 
 export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo' | 'bow' | 'heart' | 'hard' | 'resonance' | 'gravity_down' | 'gravity_up' | 'gravity_right' | 'gravity_left';
 
@@ -30,7 +30,7 @@ export type BoardState = CellValue[][];
 export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest' | 'shop' | 'event';
 export type TurnState = 'player' | 'enemy';
 
-export type GameEventId = 'assault';
+export type GameEventId = 'assault' | 'merchant_drop';
 
 export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt' | 'draw_down' | 'charging';
 

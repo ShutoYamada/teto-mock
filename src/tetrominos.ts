@@ -403,6 +403,40 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "上下左右の重力ブロックで構成される",
     rarity: "rare",
   },
+  Booster: {
+    shape: [
+      [true],
+      [true],
+      [true],
+    ],
+    blockTypes: [
+      ['normal'],
+      ['draw'],
+      ['normal'],
+    ],
+    color: '#FF4500',
+    glowColor: 'rgba(255, 69, 0, 0.5)',
+    cost: 2,
+    attack: 4,
+    effectText: "中心1マスにドローブロックを持つ",
+    rarity: "uncommon",
+  },
+  RocketHead: {
+    shape: [
+      [false, true, false],
+      [true,  true, true],
+    ],
+    blockTypes: [
+      ['normal', 'draw', 'normal'],
+      ['draw',  'draw', 'draw'],
+    ],
+    color: '#FF0000',
+    glowColor: 'rgba(255, 0, 0, 0.5)',
+    cost: 3,
+    attack: 15,
+    effectText: "全てのマスがドローブロックで構成される",
+    rarity: "rare",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {
@@ -528,7 +562,7 @@ export function shuffle<T>(array: T[]): T[] {
 }
 
 export function generateRewardCards(count: number = 3): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute', 'Guitar', 'GravityStone', 'FloatingStone', 'LeftRight', 'LookThatWay'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute', 'Guitar', 'GravityStone', 'FloatingStone', 'LeftRight', 'LookThatWay', 'Booster', 'RocketHead'];
   const rewards: TetrominoCard[] = [];
   
   // Pick X random cards for drafting
@@ -561,7 +595,7 @@ export function getCardPrice(card: TetrominoCard): number {
 }
 
 export function generateShopCards(count: number = 5): TetrominoCard[] {
-  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute', 'Guitar', 'GravityStone', 'FloatingStone', 'LeftRight', 'LookThatWay'];
+  const types: TetrominoType[] = ['Cross', 'SquareBomb', 'Mana', 'Shield', 'Draw', 'PainfulCapitalIncrease', 'GoldVein', 'OneTwo', 'Jab', 'Bow', 'Heart', 'BigHeart', 'Obsidian', 'Diamond', 'SilverBullet', 'Note', 'Cymbal', 'Flute', 'Guitar', 'GravityStone', 'FloatingStone', 'LeftRight', 'LookThatWay', 'Booster', 'RocketHead'];
   const shopCards: TetrominoCard[] = [];
   
   for (let i = 0; i < count; i++) {

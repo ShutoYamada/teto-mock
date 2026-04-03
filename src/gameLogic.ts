@@ -62,6 +62,7 @@ export interface ClearResult {
   bowCount: number;
   heartCount: number;
   gravityCount: number;
+  hardBlockClearedCount: number;
 }
 
 export function clearLines(board: BoardState): ClearResult {
@@ -80,7 +81,7 @@ export function clearLines(board: BoardState): ClearResult {
 
   const clearedCount = fullRows.size + fullCols.size;
   if (clearedCount === 0) {
-    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0, bowCount: 0, heartCount: 0, gravityCount: 0 };
+    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0, bowCount: 0, heartCount: 0, gravityCount: 0, hardBlockClearedCount: 0 };
   }
 
   const cellsToClear = new Set<string>();
@@ -171,11 +172,14 @@ export function clearLines(board: BoardState): ClearResult {
     }
   });
 
+  let hardBlockClearedCount = 0;
+
   // Execute Clearing
   let newBoard = board.map((row, r) =>
     row.map((cell, c) => {
       if (cellsToClear.has(`${r},${c}`)) {
         if (cell?.blockType === 'hard') {
+          hardBlockClearedCount++;
           return { ...cell, blockType: 'normal' as BlockType };
         }
         return null;
@@ -189,7 +193,7 @@ export function clearLines(board: BoardState): ClearResult {
     newBoard = applyGravity(newBoard, action.type);
   }
 
-  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount };
+  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount, hardBlockClearedCount };
 }
 
 function applyGravity(board: BoardState, type: BlockType): BoardState {
@@ -912,6 +916,38 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     name: '半重力装置',
     rarity: 'uncommon',
     description: '重力ブロックの消滅時効果が発生する度に敵全体に5ダメージを与える',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
+  accelerator: {
+    name: '加速器',
+    rarity: 'uncommon',
+    description: 'ドローブロックの効果発動時、敵全体に3ダメージ与える',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
+  hammer: {
+    name: 'ハンマー',
+    rarity: 'uncommon',
+    description: 'ハードブロックが消去されノーマルブロックに置き換わる度に、敵全体に5ダメージ',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
+  rolling_stone: {
+    name: 'ローリングストーン',
+    rarity: 'rare',
+    description: '自ターンの開始時ごとに、盤面上のランダムな空きマス2つにハードブロックを配置する',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
+  katana: {
+    name: '刀',
+    rarity: 'common',
+    description: '剣ブロックの効果が「配置している間中、全てのミノカードの配置時の基礎ダメージが2上昇する」に置き換わる',
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,

@@ -7,6 +7,33 @@ interface Props {
 }
 
 export const EventScreen: React.FC<Props> = ({ state, dispatch }) => {
+  if (state.currentEventId === 'merchant_drop') {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 min-h-full">
+        <h2 className="text-2xl font-bold mb-8">商人の落とし物</h2>
+        <div className="bg-gray-800 p-8 rounded-lg shadow-lg max-w-lg w-full text-center">
+          <p className="text-xl mb-8">目の前を歩く行商人が、何やら落とし物をしたようだ</p>
+          
+          <div className="flex flex-col gap-4 w-full">
+            <button
+              className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded transition-colors"
+              onClick={() => dispatch({ type: 'EVENT_MERCHANT_STEAL' })}
+            >
+              くすねる (ランダムなカスタムミノを獲得)
+            </button>
+            
+            <button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition-colors"
+              onClick={() => dispatch({ type: 'EVENT_MERCHANT_RETURN' })}
+            >
+              返却する (50Gを獲得)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (state.currentEventId !== 'assault') {
     return (
       <div className="flex flex-col items-center justify-center p-8 min-h-full">

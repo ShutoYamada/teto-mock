@@ -39,10 +39,15 @@ export function createDamagePipelineAndCalculate(
       event.baseDamage += event.card.attack;
 
       let swordBuff = 0;
+      let buffPerSword = 1;
+      if (event.context.state.artifacts.some((a: any) => a.id === 'katana')) {
+         buffPerSword = 2;
+      }
+
       for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
           if (event.context.state.board[r][c]?.blockType === 'sword') {
-            swordBuff += 1;
+            swordBuff += buffPerSword;
           }
         }
       }
