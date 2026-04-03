@@ -437,6 +437,82 @@ export const CUSTOM_TETROMINO_DEFS: Record<CustomTetrominoType, TetrominoDefinit
     effectText: "全てのマスがドローブロックで構成される",
     rarity: "rare",
   },
+  EnhancedI: {
+    shape: [
+      [true, true, true, true],
+    ],
+    color: '#00D9FF',
+    glowColor: 'rgba(0, 217, 255, 0.5)',
+    cost: 1,
+    attack: 8,
+    rarity: "uncommon",
+  },
+  EnhancedO: {
+    shape: [
+      [true, true],
+      [true, true],
+    ],
+    color: '#FFE000',
+    glowColor: 'rgba(255, 224, 0, 0.5)',
+    cost: 1,
+    attack: 8,
+    rarity: "uncommon",
+  },
+  EnhancedT: {
+    shape: [
+      [false, true, false],
+      [true,  true, true]
+    ],
+    color: '#C855FF',
+    glowColor: 'rgba(200, 85, 255, 0.5)',
+    cost: 1,
+    attack: 8,
+    rarity: "uncommon",
+  },
+  EnhancedS: {
+    shape: [
+      [false, true, true],
+      [true,  true, false],
+    ],
+    color: '#00FF7F',
+    glowColor: 'rgba(0, 255, 127, 0.5)',
+    cost: 1,
+    attack: 8,
+    rarity: "uncommon",
+  },
+  EnhancedZ: {
+    shape: [
+      [true,  true, false],
+      [false, true, true],
+    ],
+    color: '#FF4040',
+    glowColor: 'rgba(255, 64, 64, 0.5)',
+    cost: 1,
+    attack: 8,
+    rarity: "uncommon",
+  },
+  EnhancedJ: {
+    shape: [
+      [true,  false, false],
+      [true,  true,  true],
+    ],
+    color: '#4080FF',
+    glowColor: 'rgba(64, 128, 255, 0.5)',
+    cost: 1,
+    attack: 8,
+    rarity: "uncommon",
+  },
+  EnhancedL: {
+    shape: [
+      [false, false, true],
+      [true,  true,  true],
+    ],
+    color: '#FF8C00',
+    glowColor: 'rgba(255, 140, 0, 0.5)',
+    cost: 1,
+    attack: 8,
+    rarity: "uncommon",
+  },
 }
 
 export const DEFAULT_TETROMINO_DEFS: Record<DefaultTetrominoType, TetrominoDefinition> = {

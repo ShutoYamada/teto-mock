@@ -1,4 +1,4 @@
-import { GameState, TetrominoCard, Artifact, BoardState, Enemy, Status, BlockType, GameEventId } from './types';
+import { GameState, TetrominoCard, TetrominoType, Artifact, BoardState, Enemy, Status, BlockType, GameEventId } from './types';
 import { buildDeck, generateRewardCards, generateShopCards, getCardPrice } from './tetrominos';
 import {
   createEmptyBoard,
@@ -43,7 +43,10 @@ export type GameCommand =
   | { type: 'EVENT_MERCHANT_STEAL' }
   | { type: 'EVENT_MERCHANT_RETURN' }
   | { type: 'EVENT_FAIRY_MIRROR_DUPLICATE'; cardId: string }
-  | { type: 'EVENT_FAIRY_MIRROR_IGNORE' };
+  | { type: 'EVENT_FAIRY_MIRROR_IGNORE' }
+  | { type: 'EVENT_MYSTERY_DIVE' }
+  | { type: 'EVENT_MYSTERY_THROW'; cardId: string }
+  | { type: 'EVENT_MYSTERY_IGNORE' };
 
 export function initGame(): GameState {
   const deck = buildDeck();
@@ -135,6 +138,9 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
           };
         } else {
           const events: GameEventId[] = ['assault', 'merchant_drop', 'fairy_mirror'];
+          if (state.stage === 1) {
+            events.push('mystery_change');
+          }
           const randomEvent = events[Math.floor(Math.random() * events.length)];
           return {
             ...state,
@@ -299,14 +305,19 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         hammerDamage = hardBlockClearedCount * 5;
       }
 
+      let cupidBowDamage = 0;
+      if (heartCount > 0 && state.artifacts.some(a => a.id === 'cupid_bow')) {
+        cupidBowDamage = heartCount * 3;
+      }
+
       const bombDamagePerCount = state.artifacts.some(a => a.id === 'gunpowder') ? 15 : 10;
-      const totalTargetDamage = damage + bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage;
+      const totalTargetDamage = damage + bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage + cupidBowDamage;
       if (command.damageResultCallback && totalTargetDamage > 0) {
         command.damageResultCallback(totalTargetDamage, bombCount, cleared);
       }
 
       let newEnemies = state.enemies.map(e => {
-        let enemyDamage = bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage;
+        let enemyDamage = bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage + cupidBowDamage;
         if (e.id === state.targetEnemyId || bowCount > 0) {
            enemyDamage += damage;
         }
@@ -848,6 +859,85 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
     }
 
     case 'EVENT_FAIRY_MIRROR_IGNORE': {
+      return {
+        ...state,
+        screen: 'dungeon',
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_MYSTERY_DIVE': {
+      const mapping: Record<string, string> = {
+        'I': 'EnhancedI',
+        'O': 'EnhancedO',
+        'T': 'EnhancedT',
+        'S': 'EnhancedS',
+        'Z': 'EnhancedZ',
+        'J': 'EnhancedJ',
+        'L': 'EnhancedL',
+      };
+      const newDeck = state.deck.map(card => {
+        const mappedType = mapping[card.type];
+        if (mappedType) {
+          const newType = mappedType as TetrominoType;
+          const def = TETROMINO_DEFS[newType];
+          return {
+            ...card,
+            type: newType,
+            shape: def.shape,
+            blockTypes: def.blockTypes,
+            color: def.color,
+            glowColor: def.glowColor,
+            cost: def.cost,
+            attack: def.attack,
+            effectText: def.effectText,
+            rarity: def.rarity,
+          };
+        }
+        return card;
+      });
+      return {
+        ...state,
+        screen: 'dungeon',
+        deck: newDeck,
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_MYSTERY_THROW': {
+      const cardIndex = state.deck.findIndex(c => c.id === command.cardId);
+      if (cardIndex === -1) return state;
+      
+      const allTypes = Object.keys(TETROMINO_DEFS) as TetrominoType[];
+      const rewardTypes = allTypes.filter(t => TETROMINO_DEFS[t].rarity !== 'default');
+      const randomType = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+      const def = TETROMINO_DEFS[randomType];
+      
+      const newCard: TetrominoCard = {
+        id: `card-event-${Math.random().toString(36).substr(2, 9)}`,
+        type: randomType,
+        shape: def.shape,
+        blockTypes: def.blockTypes,
+        color: def.color,
+        glowColor: def.glowColor,
+        cost: def.cost,
+        attack: def.attack,
+        effectText: def.effectText,
+        rarity: def.rarity,
+      };
+      
+      const newDeck = [...state.deck];
+      newDeck.splice(cardIndex, 1, newCard);
+      
+      return {
+        ...state,
+        screen: 'dungeon',
+        deck: newDeck,
+        currentEventId: null,
+      };
+    }
+
+    case 'EVENT_MYSTERY_IGNORE': {
       return {
         ...state,
         screen: 'dungeon',

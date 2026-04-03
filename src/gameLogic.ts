@@ -1018,6 +1018,14 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,
+  },
+  cupid_bow: {
+    name: 'キューピッドの弓',
+    rarity: 'uncommon',
+    description: 'ライフブロック消滅時に回復したHPと同じ値だけ、敵全体にダメージを与える',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   }
 };
 
