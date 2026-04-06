@@ -1026,6 +1026,14 @@ export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
     isEliteDrop: true,
     isShopSale: true,
     isEventReward: true,
+  },
+  piled_snow: {
+    name: '積もった雪',
+    rarity: 'rare',
+    description: '縦または横のラインが1つ消滅するたびに、デッキからカードを1枚引く',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
   }
 };
 

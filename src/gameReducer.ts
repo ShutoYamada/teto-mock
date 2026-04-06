@@ -280,7 +280,9 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       let newDeck = [...state.deck];
       let newDiscardPile = [...state.discardPile, selectedCard];
 
-      for (let i = 0; i < drawnCardsCount; i++) {
+      const totalDrawnCards = drawnCardsCount + (clearedCount > 0 && state.artifacts.some(a => a.id === 'piled_snow') ? clearedCount : 0);
+
+      for (let i = 0; i < totalDrawnCards; i++) {
         if (newDeck.length === 0 && newDiscardPile.length > 0) {
           newDeck = [...newDiscardPile].sort(() => Math.random() - 0.5);
           newDiscardPile = [];
