@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 
+.pnpm-store/
+
 # Build output
 dist/
 dist-ssr/
