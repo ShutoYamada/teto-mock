@@ -2,7 +2,7 @@ export type TetrominoType = DefaultTetrominoType | CustomTetrominoType;
 export type DefaultTetrominoType = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
 export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo' | 'Jab' | 'Bow' | 'Heart' | 'BigHeart' | 'Obsidian' | 'Diamond' | 'SilverBullet' | 'Note' | 'Cymbal' | 'Flute' | 'Guitar' | 'GravityStone' | 'FloatingStone' | 'LeftRight' | 'LookThatWay' | 'Booster' | 'RocketHead' | 'EnhancedI' | 'EnhancedO' | 'EnhancedT' | 'EnhancedS' | 'EnhancedZ' | 'EnhancedJ' | 'EnhancedL';
 
-export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo' | 'bow' | 'heart' | 'hard' | 'resonance' | 'gravity_down' | 'gravity_up' | 'gravity_right' | 'gravity_left';
+export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo' | 'bow' | 'heart' | 'hard' | 'resonance' | 'gravity_down' | 'gravity_up' | 'gravity_right' | 'gravity_left' | 'spore';
 
 export interface TetrominoCard {
   id: string;
@@ -20,6 +20,7 @@ export interface TetrominoCard {
 export interface CellData {
   type: TetrominoType;
   blockType: BlockType;
+  sporeTurns?: number;
 }
 
 // Each cell is null (empty) or carries tetromino and block data
@@ -63,6 +64,9 @@ export interface Enemy {
   };
   statuses: Status[];
   goldReward: number;
+  bossRole?: 'body' | 'jaw' | 'scale' | 'minion';
+  summoned?: boolean;
+  enraged?: boolean;
 }
 
 export type ArtifactRarity = 'common' | 'uncommon' | 'rare' | 'boss';
@@ -85,6 +89,18 @@ export interface DungeonNode {
   depth: number;
   type: DungeonNodeType;
   nextNodes: string[]; // IDs of nodes this node connects to
+}
+
+export type BossId = 'blockEater' | 'ironTurtle' | 'goblinChief' | 'valkyrie' | 'magneticGolem' | 'sporeGardener' | 'ancientCore' | 'twinDragon' | 'architect';
+export interface LineTarget { axis: 'row' | 'col'; index: number }
+export interface BossBattle {
+  id: BossId;
+  turn: number;
+  lines: number;
+  interrupted: boolean;
+  fallenUntil: number;
+  targets: LineTarget[];
+  cells: { row: number; col: number }[];
 }
 
 export interface GameState {
@@ -118,6 +134,11 @@ export interface GameState {
   
   // Progression & Map
   stage: number;
+  stageBoss: BossId;
+  bossBattle: BossBattle | null;
+  encounterGold: number;
+  encounterHasElite: boolean;
+  rewardGold: number;
   dungeonMap: DungeonNode[];
   currentNodeId: string | null; // null means at the start (depth 0), ready to pick a depth 1 node
   currentEventId: GameEventId | null;

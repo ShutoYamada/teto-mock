@@ -55,10 +55,13 @@ export default function App() {
 
   const handleTurnEnd = useCallback(() => {
     dispatch({ type: 'END_PLAYER_TURN' });
-    setTimeout(() => {
-       dispatch({ type: 'EXECUTE_ENEMY_TURN' });
-    }, 1000);
   }, []);
+
+  useEffect(() => {
+    if (state.screen !== 'battle' || state.turn !== 'enemy') return;
+    const timer = window.setTimeout(() => dispatch({ type: 'EXECUTE_ENEMY_TURN' }), 1000);
+    return () => window.clearTimeout(timer);
+  }, [state.screen, state.turn]);
 
   const handleArtifactSelect = useCallback((artifact: Artifact | null) => {
     dispatch({ type: 'SELECT_ARTIFACT', artifact });
@@ -156,7 +159,7 @@ export default function App() {
             <h2 className="gameover-title">
               {state.hp > 0 ? "ダンジョン踏破！" : "ゲームオーバー"}
             </h2>
-            <p className="gameover-score">到達深度: <strong>{state.stage}</strong></p>
+            <p className="gameover-score">到達ステージ: <strong>{state.stage}</strong></p>
             <p className="gameover-score">最終スコア: <strong>{state.score.toLocaleString()}</strong></p>
             <button className="new-game-btn new-game-btn--large" onClick={handleNewGame}>
               最初からやり直す

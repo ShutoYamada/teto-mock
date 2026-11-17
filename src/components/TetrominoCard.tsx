@@ -1,4 +1,3 @@
-import React from 'react';
 import type { TetrominoCard as TetrominoCardType } from '../types';
 
 interface TetrominoCardProps {

@@ -11,7 +11,7 @@ export function ResultScreen({ state, onSelectCard, onSelectArtifact }: ResultSc
   return (
     <div className="result-screen">
       <h2 className="result-title">戦闘勝利！</h2>
-      <p className="result-gold">獲得Gold: +{state.stage * 10}G</p>
+      <p className="result-gold">獲得Gold: +{state.rewardGold}G</p>
       
       {state.rewardArtifact && (
         <div className="artifact-reward-section">
@@ -43,6 +43,7 @@ export function ResultScreen({ state, onSelectCard, onSelectArtifact }: ResultSc
       )}
 
       <h3 className="result-subtitle">カードを1枚デッキに加える</h3>
+      {state.dungeonMap.find(n => n.id === state.currentNodeId)?.type === 'boss' && <p>{state.stage < 3 ? `報酬を選ぶとステージ${state.stage + 1}へ進みます` : '報酬を選ぶとダンジョン踏破です'}</p>}
       <div className="reward-cards">
         {state.rewardCards.map((card) => (
           <div key={card.id} className="reward-card-wrap">

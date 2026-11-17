@@ -53,6 +53,8 @@ export function placeCard(
 export interface ClearResult {
   newBoard: BoardState;
   clearedCount: number;
+  fullRows: number[];
+  fullCols: number[];
   bombCount: number;
   manaCount: number;
   goldCount: number;
@@ -81,7 +83,7 @@ export function clearLines(board: BoardState): ClearResult {
 
   const clearedCount = fullRows.size + fullCols.size;
   if (clearedCount === 0) {
-    return { newBoard: board, clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0, bowCount: 0, heartCount: 0, gravityCount: 0, hardBlockClearedCount: 0 };
+    return { newBoard: board, fullRows: [], fullCols: [], clearedCount: 0, bombCount: 0, manaCount: 0, goldCount: 0, borderCount: 0, stripeCount: 0, comboCount: 0, bowCount: 0, heartCount: 0, gravityCount: 0, hardBlockClearedCount: 0 };
   }
 
   const cellsToClear = new Set<string>();
@@ -193,7 +195,7 @@ export function clearLines(board: BoardState): ClearResult {
     newBoard = applyGravity(newBoard, action.type);
   }
 
-  return { newBoard, clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount, hardBlockClearedCount };
+  return { newBoard, fullRows: [...fullRows], fullCols: [...fullCols], clearedCount, bombCount, manaCount, goldCount, borderCount, stripeCount, comboCount, bowCount, heartCount, gravityCount, hardBlockClearedCount };
 }
 
 function applyGravity(board: BoardState, type: BlockType): BoardState {
@@ -272,7 +274,7 @@ export function generateEnemyIntent(stage: number): number {
 
 export const ENEMY_TEMPLATES: Record<string, {
   name: string;
-  type: 'normal' | 'elite' | 'boss';
+  type: 'normal' | 'elite';
   hpRange: [number, number];
   goldReward: number;
   actions: EnemyAction[];
@@ -487,92 +489,6 @@ export const ENEMY_TEMPLATES: Record<string, {
       }
     ]
   },
-  blockEater: {
-    name: 'ブロックイーター',
-    type: 'boss',
-    hpRange: [125, 125],
-    goldReward: 100,
-    actions: [
-      {
-        name: '通常攻撃',
-        description: 'プレイヤーに10～13ダメージを与える',
-        damageRange: [10, 13],
-        weight: 35,
-      },
-      {
-        name: '雄たけび',
-        description: '自身に憤怒(5)を付与する',
-        effect: (enemy: Enemy) => {
-          const statuses = [...enemy.statuses];
-          const fury = statuses.find(s => s.type === 'fury');
-          if (fury) fury.value += 5;
-          else statuses.push({ type: 'fury', value: 5 });
-          return { statuses };
-        },
-        weight: 35,
-      },
-      {
-        name: '丸かじり',
-        description: '18ダメージを与え、盤面のランダムな行、または列から1ラインを削除する',
-        damageRange: [18, 18],
-        effect: (_enemy: Enemy, state: GameState) => {
-          const isRow = Math.random() > 0.5;
-          const index = Math.floor(Math.random() * state.board.length);
-          const newBoard = state.board.map((row, r) => 
-            row.map((cell, c) => {
-              if (isRow && r === index) return null;
-              if (!isRow && c === index) return null;
-              return cell;
-            })
-          );
-          return { board: newBoard };
-        },
-        weight: 30,
-      }
-    ]
-  },
-  valkyrie: {
-    name: 'ヴァルキリー',
-    type: 'boss',
-    hpRange: [150, 150],
-    goldReward: 100,
-    actions: [
-      {
-        name: '高速斬撃',
-        description: 'プレイヤーに10ダメージを3回与える',
-        damageRange: [10, 10],
-        count: 3,
-        weight: 35,
-      },
-      {
-        name: '一閃',
-        description: '10ダメージを与え、次のターン開始時にプレイヤーが引くカードが4枚になる',
-        damageRange: [10, 10],
-        effect: (_enemy, _state) => {
-          const statuses = [..._state.statuses];
-          const drawDown = statuses.find(s => s.type === 'draw_down');
-          if (drawDown) drawDown.value += 1;
-          else statuses.push({ type: 'draw_down', value: 1 });
-          return { statuses };
-        },
-        weight: 35,
-      },
-      {
-        name: '力を溜める',
-        description: '自身に憤怒(3)を付与し、次のターンの行動が必ず高速斬撃になる',
-        effect: (enemy) => {
-          const statuses = [...enemy.statuses];
-          const fury = statuses.find(s => s.type === 'fury');
-          if (fury) fury.value += 3;
-          else statuses.push({ type: 'fury', value: 3 });
-          
-          statuses.push({ type: 'charging', value: 1 });
-          return { statuses };
-        },
-        weight: 30,
-      }
-    ]
-  },
   slimeQueen: {
     name: 'スライムクイーン',
     type: 'elite',
@@ -631,7 +547,7 @@ export const ENEMY_TEMPLATES: Record<string, {
   }
 };
 
-export function getRandomEnemy(stage: number, type: 'normal' | 'elite' | 'boss'): Enemy {
+export function getRandomEnemy(stage: number, type: 'normal' | 'elite'): Enemy {
   let templates = Object.values(ENEMY_TEMPLATES).filter(t => t.type === type);
   
   // Filter by stage
@@ -827,7 +743,7 @@ export function generateDungeonMap(): DungeonNode[] {
   return map;
 }
 
-export function getEnemyEncounter(stage: number, type: 'normal' | 'elite' | 'boss'): Enemy[] {
+export function getEnemyEncounter(stage: number, type: 'normal' | 'elite'): Enemy[] {
   if (type === 'elite' && stage === 2) {
     // Special Boss-like elite for stage 2: Captain + 2 Pirates
     const captainTemplate = ENEMY_TEMPLATES.captain;

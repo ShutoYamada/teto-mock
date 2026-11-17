@@ -1,5 +1,4 @@
-import React from 'react';
-import { GameState, TetrominoCard, Artifact } from '../types';
+import { GameState } from '../types';
 import { getCardPrice } from '../tetrominos';
 import { getArtifactPrice } from '../gameLogic';
 

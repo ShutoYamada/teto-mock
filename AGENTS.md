@@ -36,4 +36,6 @@ UIやゲームルールをブラッシュアップするために、React・Type
 - `pnpm dev`: 開発サーバーの起動
 - `pnpm build`: 本番用ビルド
 - `pnpm exec tsc --noEmit`: 型チェック（buildには含まれない）
-- 現在、自動テストとLintの実行スクリプトは定義されていない
+- `pnpm typecheck`: 型チェック
+- `pnpm test`: ボスの行動・固有能力・ステージ進行・報酬の回帰テスト
+- 現在、Lintの実行スクリプトは定義されていない

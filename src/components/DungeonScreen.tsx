@@ -1,4 +1,5 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
+import { BOSSES } from '../battle/bosses';
 import { GameState, DungeonNode } from '../types';
 
 interface DungeonScreenProps {
@@ -36,7 +37,7 @@ export function DungeonScreen({ state, onEnterNode, onOpenDeck }: DungeonScreenP
     if (containerRef.current) {
         containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [state.currentNodeId]);
+  }, [state.currentNodeId, state.stage]);
 
   const getNodeEmoji = (type: string) => {
     switch(type) {
@@ -51,7 +52,12 @@ export function DungeonScreen({ state, onEnterNode, onOpenDeck }: DungeonScreenP
 
   return (
     <div className="dungeon-screen">
-      <h2 className="dungeon-title">ダンジョン探索</h2>
+      <h2 className="dungeon-title">ステージ {state.stage} / 3 — ダンジョン探索</h2>
+      <details className="boss-guide" open>
+        <summary>💀 ボス：{BOSSES[state.stageBoss].name}</summary>
+        <p>{BOSSES[state.stageBoss].summary}</p>
+        <p>行動周期：{BOSSES[state.stageBoss].cycle.join(" → ")}</p>
+      </details>
       
       <div className="dungeon-map-container" ref={containerRef}>
         <div className="dungeon-map-visual">
@@ -82,7 +88,7 @@ export function DungeonScreen({ state, onEnterNode, onOpenDeck }: DungeonScreenP
                           }}
                           disabled={!isSelectable}
                         >
-                          {getNodeEmoji(node.type)}
+                          {node.type === 'boss' ? `💀 ${BOSSES[state.stageBoss].name}` : getNodeEmoji(node.type)}
                         </button>
                       </div>
                     );

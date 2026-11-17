@@ -18,6 +18,7 @@ import {
   getArtifactPrice,
 } from './gameLogic';
 import { createDamagePipelineAndCalculate } from './battle/events/DamagePipeline';
+import { rollBoss, createBossEncounter, prepareBossTurn, bossDamageModifiers, onBossLines, endBossPlayerTurn, executeBossTurn } from './battle/bosses';
 import { TETROMINO_DEFS } from './tetrominos';
 
 export type GameCommand =
@@ -71,6 +72,11 @@ export function initGame(): GameState {
     enemies: [],
     targetEnemyId: null,
     stage: 1,
+    stageBoss: rollBoss(1),
+    bossBattle: null,
+    encounterGold: 0,
+    encounterHasElite: false,
+    rewardGold: 0,
     dungeonMap: generateDungeonMap(),
     currentNodeId: null,
     currentEventId: null,
@@ -89,12 +95,65 @@ export function initGame(): GameState {
   };
 }
 
+function finishBattle(state: GameState): GameState {
+  if (state.hp <= 0) return { ...state, hp: 0, screen: 'gameover', bossBattle: null };
+  const won = state.bossBattle
+    ? !state.enemies.some(e => e.bossRole !== 'minion' && e.hp > 0)
+    : !state.enemies.some(e => e.hp > 0);
+  if (!won) return state;
+  const rewardGold = Math.floor(state.encounterGold * (state.artifacts.some(a => a.id === 'abacus') ? 1.1 : 1));
+  return {
+    ...state, screen: 'result', bossBattle: null, enemies: [], targetEnemyId: null,
+    board: state.board.map(row => row.map(cell => cell?.blockType === 'spore' ? null : cell)),
+    statuses: [],
+    deck: [...state.deck, ...state.hand, ...state.discardPile, ...state.exilePile],
+    hand: [], discardPile: [], exilePile: [], selectedCardId: null,
+    gold: state.gold + rewardGold, rewardGold,
+    rewardCards: generateRewardCards(state.artifacts.some(a => a.id === 'white_card') ? 4 : 3),
+    rewardArtifact: state.encounterHasElite ? getRandomArtifactByRarity(state.stage, state.artifacts) : null,
+  };
+}
+
+function drawNextHand(state: GameState): GameState {
+  let deck = [...state.deck];
+  let discardPile = [...state.discardPile, ...state.hand];
+  const hand: TetrominoCard[] = [];
+  const reduction = state.statuses.find(s => s.type === 'draw_down')?.value ?? 0;
+  const count = Math.max(1, 5 - reduction - (state.artifacts.some(a => a.id === 'devil_statue') ? 1 : 0));
+  for (let i = 0; i < count; i++) {
+    if (!deck.length) { deck = [...discardPile].sort(() => Math.random() - .5); discardPile = []; }
+    if (deck.length) hand.push(deck.shift()!);
+  }
+  const tick = (statuses: Status[]) => statuses.flatMap(s => {
+    if (s.type === 'draw_down') return [];
+    if (s.type === 'fallen' || s.type === 'taunt' || s.type === 'charging') return s.value > 1 ? [{ ...s, value: s.value - 1 }] : [];
+    return [s];
+  });
+  let board = state.board;
+  if (state.artifacts.some(a => a.id === 'rolling_stone')) {
+    board = board.map(row => [...row]);
+    const empty: [number, number][] = [];
+    board.forEach((row, r) => row.forEach((c, col) => { if (!c) empty.push([r, col]); }));
+    for (let i = 0; i < 2 && empty.length; i++) {
+      const [r, c] = empty.splice(Math.floor(Math.random() * empty.length), 1)[0];
+      board[r][c] = { type: 'I', blockType: 'hard' };
+    }
+  }
+  const enemies = state.enemies.map(e => ({ ...e, statuses: tick(e.statuses) }));
+  return { ...state, board, hand, deck, discardPile, enemies, statuses: tick(state.statuses), mp: state.maxMp, shield: 0, turn: 'player', combo: 0,
+    targetEnemyId: enemies.some(e => e.id === state.targetEnemyId) ? state.targetEnemyId : enemies[0]?.id ?? null };
+}
+
 export function gameReducer(state: GameState, command: GameCommand): GameState {
   switch (command.type) {
     case 'NEW_GAME':
       return initGame();
 
     case 'START_BATTLE': {
+      if (state.screen !== 'dungeon') return state;
+      const node = state.dungeonMap.find(n => n.id === command.nodeId);
+      const reachable = state.currentNodeId ? state.dungeonMap.find(n => n.id === state.currentNodeId)?.nextNodes.includes(command.nodeId) : node?.depth === 0;
+      if (!node || !reachable) return state;
       let deck = [...state.deck];
       if (deck.length < 7) deck = buildDeck();
       
@@ -105,8 +164,6 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       
       const hand = deck.splice(0, baseHandSize);
       
-      const nodeParts = command.nodeId.split('-');
-      const depth = parseInt(nodeParts[1], 10);
       const targetNode = state.dungeonMap.find(n => n.id === command.nodeId);
 
       if (targetNode?.type === 'rest') {
@@ -114,14 +171,12 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
           ...state,
           screen: 'rest',
           currentNodeId: command.nodeId,
-          stage: depth + 1,
         };
       } else if (targetNode?.type === 'shop') {
         return {
           ...state,
           screen: 'shop',
           currentNodeId: command.nodeId,
-          stage: depth + 1,
           shopCards: generateShopCards(5),
           shopArtifacts: generateShopArtifacts(state.artifacts, 3),
         };
@@ -132,7 +187,6 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
             ...state,
             screen: 'shop',
             currentNodeId: command.nodeId,
-            stage: depth + 1,
             shopCards: generateShopCards(5),
             shopArtifacts: generateShopArtifacts(state.artifacts, 3),
           };
@@ -147,21 +201,21 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
             screen: 'event',
             currentNodeId: command.nodeId,
             currentEventId: randomEvent,
-            stage: depth + 1,
           };
         }
       }
       
-      const enemies = getEnemyEncounter(depth + 1, depth === 14 ? 'boss' : (depth % 3 === 0 && depth > 0 ? 'elite' : 'normal'));
+      const bossEncounter = targetNode?.type === 'boss' ? createBossEncounter(state.stageBoss) : null;
+      const enemies = bossEncounter?.enemies ?? getEnemyEncounter(state.stage, targetNode?.type === 'elite' ? 'elite' : 'normal');
       const targetEnemyId = enemies[0]?.id || null;
       
-      let board = createEmptyBoard();
+      let board = createEmptyBoard(state.boardSize);
       if (state.artifacts.some(a => a.id === 'mana_stone')) {
         board[0][0] = { type: 'I', blockType: 'mana' as BlockType };
-        board[BOARD_SIZE - 1][BOARD_SIZE - 1] = { type: 'I', blockType: 'mana' as BlockType };
+        board[state.boardSize - 1][state.boardSize - 1] = { type: 'I', blockType: 'mana' as BlockType };
       }
 
-      return {
+      return prepareBossTurn({
         ...state,
         screen: 'battle',
         board,
@@ -175,10 +229,15 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         turn: 'player',
         combo: 0,
         currentNodeId: command.nodeId,
-        stage: depth + 1,
         enemies,
+        statuses: [],
+        selectedCardId: null,
+        bossBattle: bossEncounter?.bossBattle ?? null,
+        encounterGold: enemies.reduce((sum, e) => sum + e.goldReward, 0),
+        encounterHasElite: enemies.some(e => e.type === 'elite'),
+        rewardGold: 0,
         targetEnemyId,
-      };
+      });
     }
 
     case 'SELECT_CARD': {
@@ -213,7 +272,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
     case 'PLACE_CARD': {
       const selectedCard = state.hand.find(c => c.id === state.selectedCardId);
-      if (!selectedCard || state.turn !== 'player') return state;
+      if (!selectedCard || state.screen !== 'battle' || state.turn !== 'player') return state;
       if (state.mp < selectedCard.cost) return state;
       if (!canPlaceCard(state.board, selectedCard, command.row, command.col)) return state;
 
@@ -229,8 +288,8 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
           addedCombo += 1;
         }
         combo += addedCombo;
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          for (let c = 0; c < BOARD_SIZE; c++) {
+        for (let r = 0; r < state.boardSize; r++) {
+          for (let c = 0; c < state.boardSize; c++) {
             if (boardAfterPlace[r][c] !== null && newBoard[r][c] === null) {
               cleared.add(`${r},${c}`);
             }
@@ -250,7 +309,8 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         stripeCount,
         command.row,
         command.col,
-        targetEnemy
+        targetEnemy,
+        bossDamageModifiers(state.bossBattle, clearResult.fullRows, clearResult.fullCols, borderCount, stripeCount)
       );
       
       let addedShields = 0;
@@ -313,29 +373,25 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       }
 
       const bombDamagePerCount = state.artifacts.some(a => a.id === 'gunpowder') ? 15 : 10;
-      const totalTargetDamage = damage + bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage + cupidBowDamage;
-      if (command.damageResultCallback && totalTargetDamage > 0) {
-        command.damageResultCallback(totalTargetDamage, bombCount, cleared);
-      }
-
       let newEnemies = state.enemies.map(e => {
         let enemyDamage = bombCount * bombDamagePerCount + antigravityDamage + acceleratorDamage + hammerDamage + cupidBowDamage;
         if (e.id === state.targetEnemyId || bowCount > 0) {
-           enemyDamage += damage;
+           enemyDamage += createDamagePipelineAndCalculate(state, selectedCard, clearedCount, combo, borderCount, stripeCount,
+             command.row, command.col, e, bossDamageModifiers(state.bossBattle, clearResult.fullRows, clearResult.fullCols, borderCount, stripeCount));
         }
         
         let actualEnemyDamage = enemyDamage;
         const defense = e.statuses.find(s => s.type === 'defense');
-        if (defense) {
+        if (defense && enemyDamage > 0) {
           actualEnemyDamage = Math.max(0, actualEnemyDamage - defense.value);
         }
 
         const isFallen = e.statuses.some(s => s.type === 'fallen');
-        if (isFallen) {
+        if (isFallen || (state.bossBattle?.id === 'ancientCore' && state.bossBattle.fallenUntil >= state.bossBattle.turn)) {
           actualEnemyDamage = Math.floor(actualEnemyDamage * 1.5);
         }
 
-        const newStatuses = e.statuses.filter(s => s.type !== 'defense');
+        const newStatuses = enemyDamage > 0 ? e.statuses.filter(s => s.type !== 'defense') : e.statuses;
 
         return { 
           ...e, 
@@ -346,7 +402,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
       let reflectDamage = 0;
       state.enemies.forEach(e => {
-        if (e.id === state.targetEnemyId) {
+        if (e.id === state.targetEnemyId || bowCount > 0) {
           const reflect = e.statuses.find(s => s.type === 'reflect');
           if (reflect && damage > 0) {
             reflectDamage += reflect.value;
@@ -364,56 +420,22 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       const newScore = state.score + clearedCount * 100 + damage * 10 + bombCount * 100;
       const newClearedLines = state.clearedLines + clearedCount;
       
-      let nextScreen = state.screen;
-      let rewardCards: TetrominoCard[] = [];
-      let rewardArtifact: Artifact | null = null;
-      let earnedGold = goldCount * 5;
-
-      if (newEnemies.length === 0) {
-        nextScreen = 'result';
-        let rewardCount = 3;
-        if (state.artifacts.some(a => a.id === 'white_card')) {
-          rewardCount += 1;
-        }
-        rewardCards = generateRewardCards(rewardCount);
-
-        const hadElite = state.enemies.some(e => e.type === 'elite');
-        if (hadElite) {
-          rewardArtifact = getRandomArtifactByRarity(state.stage, state.artifacts);
-        }
-
-        const encounterGold = state.enemies.reduce((acc, e) => acc + e.goldReward, 0);
-        earnedGold += encounterGold;
-
-        if (state.artifacts.some(a => a.id === 'abacus')) {
-          earnedGold = Math.floor(earnedGold * 1.1);
-        }
-      }
-
-      return {
-        ...state,
-        screen: nextScreen,
-        board: newBoard,
-        hand: newEnemies.length === 0 ? [] : newHand,
-        discardPile: newEnemies.length === 0 ? [] : newDiscardPile,
-        exilePile: newEnemies.length === 0 ? [] : state.exilePile,
-        deck: newEnemies.length === 0 ? [...state.deck, ...newHand, ...newDiscardPile, ...state.exilePile] : state.deck,
-        selectedCardId: null,
-        mp: newMp,
-        shield: newShield,
-        combo,
-        enemies: newEnemies,
-        targetEnemyId: newTargetId,
-        score: newScore,
-        clearedLines: newClearedLines,
-        rewardCards,
-        rewardArtifact,
-        gold: state.gold + earnedGold,
+      let placedState: GameState = {
+        ...state, board: newBoard, hand: newHand, discardPile: newDiscardPile,
+        deck: newDeck, selectedCardId: null, mp: newMp, shield: newShield, combo,
+        enemies: newEnemies, targetEnemyId: newTargetId, score: newScore,
+        clearedLines: newClearedLines, gold: state.gold + goldCount * 5,
         hp: Math.min(state.maxHp, Math.max(0, state.hp - reflectDamage + heartCount * 3)),
       };
+      placedState = onBossLines(placedState, clearResult.fullRows, clearResult.fullCols);
+      placedState = { ...placedState, enemies: placedState.enemies.filter(e => e.hp > 0) };
+      const targetDamage = (targetEnemy?.hp ?? 0) - (placedState.enemies.find(e => e.id === targetEnemy?.id)?.hp ?? 0);
+      if (command.damageResultCallback) command.damageResultCallback(Math.max(0, targetDamage), bombCount, cleared);
+      return finishBattle(placedState);
     }
 
     case 'END_PLAYER_TURN': {
+      if (state.screen !== 'battle' || state.turn !== 'player') return state;
       let poisonDamage = 0;
       const newStatuses = state.statuses.map(s => {
         if (s.type === 'poison') {
@@ -424,7 +446,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       }).filter(s => s.type !== 'poison' || s.value > 0);
 
       let newHp = state.hp;
-      let nextScreen = state.screen;
+      let nextScreen: GameState['screen'] = state.screen;
       if (poisonDamage > 0) {
         newHp = Math.max(0, state.hp - poisonDamage);
         if (newHp === 0) {
@@ -432,21 +454,29 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         }
       }
 
-      return { 
+      if (newHp === 0) return { ...state, hp: 0, screen: 'gameover', bossBattle: null };
+      return endBossPlayerTurn({
         ...state, 
         turn: 'enemy', 
         selectedCardId: null,
         hp: newHp,
         statuses: newStatuses,
         screen: nextScreen
-      };
+      });
     }
 
     case 'EXECUTE_ENEMY_TURN': {
-      if (state.screen === 'gameover' || state.screen === 'result') return state;
+      if (state.screen !== 'battle' || state.turn !== 'enemy') return state;
+      if (state.bossBattle) {
+        let next = executeBossTurn(state);
+        if (next.screen === 'gameover') return next;
+        next = finishBattle(next);
+        if (next.screen === 'result') return next;
+        return prepareBossTurn(drawNextHand(next));
+      }
       let spikeDamage = 0;
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
+      for (let r = 0; r < state.boardSize; r++) {
+        for (let c = 0; c < state.boardSize; c++) {
           if (state.board[r][c]?.blockType === 'spike') {
             spikeDamage++;
           }
@@ -557,6 +587,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
          }
       });
 
+      const encounterGold = state.encounterGold + processedEnemies.filter(e => !state.enemies.some(old => old.id === e.id)).reduce((sum, e) => sum + e.goldReward, 0);
       processedEnemies = processedEnemies.filter(e => e.hp > 0);
 
       let nextScreen: GameState['screen'] = state.screen;
@@ -572,12 +603,11 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         }
         rewardCards = generateRewardCards(rewardCount);
 
-        const hadElite = state.enemies.some(e => e.type === 'elite');
+        const hadElite = state.encounterHasElite;
         if (hadElite) {
           rewardArtifact = getRandomArtifactByRarity(state.stage, state.artifacts);
         }
 
-        const encounterGold = state.enemies.reduce((acc, e) => acc + e.goldReward, 0);
         let earnedGold = encounterGold;
         if (state.artifacts.some(a => a.id === 'abacus')) {
           earnedGold = Math.floor(earnedGold * 1.1);
@@ -601,8 +631,8 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
       if (state.artifacts.some(a => a.id === 'rolling_stone')) {
         const emptyCells: {r: number, c: number}[] = [];
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          for (let c = 0; c < BOARD_SIZE; c++) {
+        for (let r = 0; r < state.boardSize; r++) {
+          for (let c = 0; c < state.boardSize; c++) {
             if (currentBoard[r][c] === null) emptyCells.push({r, c});
           }
         }
@@ -632,6 +662,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         mp: state.maxMp,
         board: currentBoard,
         gold: finalGold,
+        encounterGold,
         shield: 0,
         turn: 'player',
         enemies: newEnemiesWithUpdatedStatuses,
@@ -644,6 +675,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         combo: 0,
         rewardCards,
         rewardArtifact,
+        rewardGold: nextScreen === 'result' ? finalGold - currentGold : 0,
       };
     }
 
@@ -665,7 +697,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
     }
 
     case 'SELECT_REWARD': {
-      const isBoss = state.currentNodeId?.split('-')[1] === '14';
+      const isBoss = state.dungeonMap.find(n => n.id === state.currentNodeId)?.type === 'boss';
       let boardSize = state.boardSize;
       let board = state.board;
       if (state.artifacts.some(a => a.id === 'figure_eight_charm') && state.boardSize === 7) {
@@ -673,14 +705,17 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         board = createEmptyBoard(8);
       }
 
+      if (state.screen !== 'result' || !state.rewardCards.some(c => c.id === command.card.id)) return state;
       if (isBoss) {
+        const stage = state.stage + 1;
         return {
-           ...state,
-           deck: [...state.deck, command.card],
-           boardSize,
-           board,
-           screen: 'gameover',
-           rewardCards: [],
+          ...state, deck: [...state.deck, command.card], boardSize, board: createEmptyBoard(boardSize),
+          screen: state.stage === 3 ? 'gameover' : 'dungeon',
+          stage: state.stage === 3 ? 3 : stage,
+          stageBoss: state.stage === 3 ? state.stageBoss : rollBoss(stage),
+          dungeonMap: state.stage === 3 ? state.dungeonMap : generateDungeonMap(),
+          currentNodeId: state.stage === 3 ? state.currentNodeId : null,
+          bossBattle: null, rewardCards: [], statuses: [],
         };
       }
       return {
@@ -763,14 +798,13 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
     }
 
     case 'EVENT_ASSAULT_FIGHT': {
-      const depth = state.stage - 1;
-      const enemies = getEnemyEncounter(depth + 1, 'normal');
+      const enemies = getEnemyEncounter(state.stage, 'normal');
       const targetEnemyId = enemies[0]?.id || null;
       
-      let board = createEmptyBoard();
+      let board = createEmptyBoard(state.boardSize);
       if (state.artifacts.some(a => a.id === 'mana_stone')) {
         board[0][0] = { type: 'I', blockType: 'mana' as BlockType };
-        board[BOARD_SIZE - 1][BOARD_SIZE - 1] = { type: 'I', blockType: 'mana' as BlockType };
+        board[state.boardSize - 1][state.boardSize - 1] = { type: 'I', blockType: 'mana' as BlockType };
       }
 
       let deck = [...state.deck];
@@ -799,6 +833,11 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         enemies,
         targetEnemyId,
         currentEventId: null,
+        bossBattle: null,
+        statuses: [], selectedCardId: null,
+        encounterGold: enemies.reduce((sum, e) => sum + e.goldReward, 0),
+        encounterHasElite: enemies.some(e => e.type === 'elite'),
+        rewardGold: 0,
       };
     }
 

@@ -1,5 +1,5 @@
-import React from 'react';
 import { GameState, TetrominoCard } from '../types';
+import { BOSSES, bossStep, bossCellMarkers, lineLabel } from '../battle/bosses';
 import { Board } from './Board';
 import { Hand } from './Hand';
 
@@ -31,6 +31,16 @@ export function BattleScreen({
 }: BattleScreenProps & { onTargetClick: (enemyId: string) => void }) {
   return (
     <div className="battle-screen">
+      {state.bossBattle && (
+        <section className="boss-guide" aria-live="polite">
+          <strong>ステージ {state.stage} — {BOSSES[state.bossBattle.id].name}</strong>
+          <p>{BOSSES[state.bossBattle.id].summary}</p>
+          <p>行動周期：{BOSSES[state.bossBattle.id].cycle.map((name, i) => i === bossStep(state.bossBattle!) ? `【${name}】` : name).join(' → ')}</p>
+          {state.bossBattle.targets.length > 0 && <p>盤面予告：{state.bossBattle.targets.map(lineLabel).join('・')}（{state.bossBattle.id === 'architect' ? `裁定まで${bossStep(state.bossBattle) === 0 ? 2 : 1}ターン` : 'この敵ターンに削除'}）</p>}
+          {state.bossBattle.id === 'ancientCore' && state.bossBattle.fallenUntil >= state.bossBattle.turn && <p>転倒中：受けるダメージ1.5倍（残り{state.bossBattle.fallenUntil - state.bossBattle.turn + 1}プレイヤーターン）</p>}
+          {state.bossBattle.id === 'sporeGardener' && <p>「胞」は散布予告。「菌2 / 菌1」は成熟までの残りターン。</p>}
+        </section>
+      )}
       {/* HUD - Player and Enemy Stats */}
       <div className="battle-hud">
         <div className="player-stats">
@@ -65,7 +75,7 @@ export function BattleScreen({
           )}
         </div>
 
-        <div className="enemies-container" style={{ display: 'flex', gap: '12px' }}>
+        <div className="enemies-container" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {state.enemies.map(enemy => {
             const isTarget = state.targetEnemyId === enemy.id;
             const isFlashing = flashDamage && isTarget;
@@ -121,6 +131,7 @@ export function BattleScreen({
             if (state.turn === 'player') onCellClick(r, c);
           }}
           clearedCells={clearedCells}
+          markers={bossCellMarkers(state)}
         />
       </main>
 

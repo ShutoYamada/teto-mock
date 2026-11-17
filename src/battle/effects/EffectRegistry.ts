@@ -33,15 +33,6 @@ export class EffectRegistry {
         effect.attach(bus);
       }
     }
-    
-    // Enemy Status effects can also be checked here, but currently they 
-    // hook onto specific enemy ID or evaluate context dynamically. 
-    // To keep it clean, we can register "enemy_status_fallen" and attach it,
-    // and let the listener check if the targetEnemy has this status.
-    // Instead of attaching per enemy, we attach the global rule for Fallen.
-    
-    const fallenEffect = this.getEffect('enemy_status_fallen');
-    if (fallenEffect) fallenEffect.attach(bus);
   }
 }
 

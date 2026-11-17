@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import type { TetrominoCard } from '../types';
-import { BOARD_SIZE, canPlaceCard } from '../gameLogic';
+import { canPlaceCard } from '../gameLogic';
 import type { BoardState } from '../types';
 import { TETROMINO_DEFS } from '../tetrominos';
 
@@ -9,9 +9,10 @@ interface BoardProps {
   selectedCard: TetrominoCard | null;
   onCellClick: (row: number, col: number) => void;
   clearedCells: Set<string>;
+  markers?: Record<string, string>;
 }
 
-export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardProps) {
+export function Board({ board, selectedCard, onCellClick, clearedCells, markers = {} }: BoardProps) {
   const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
   const touchTimer = useRef<number | null>(null);
   const lastTouchCell = useRef<{ row: number; col: number } | null>(null);
@@ -45,7 +46,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
         if (!selectedCard.shape[r][c]) continue;
         const br = hoverCell.row + r;
         const bc = hoverCell.col + c;
-        if (br >= 0 && br < BOARD_SIZE && bc >= 0 && bc < BOARD_SIZE) {
+        if (br >= 0 && br < board.length && bc >= 0 && bc < board.length) {
           cells.add(`${br},${bc}`);
         }
       }
@@ -98,7 +99,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
     <div className="board-wrapper">
       <div
         className="board"
-        style={{ gridTemplateColumns: `repeat(${board.length}, 1fr)` }}
+        style={{ gridTemplateColumns: `repeat(${board.length}, minmax(0, 1fr))`, width: `min(calc(${board.length} * var(--cell-size) + ${board.length - 1} * var(--gap)), calc(100vw - 56px))` }}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
@@ -130,7 +131,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                }
             }
             
-            const blockIcon = blockType === 'bomb' ? '💣' :
+            const blockIcon = blockType === 'spore' ? `菌${cell?.sporeTurns ?? 2}` : blockType === 'bomb' ? '💣' :
                               blockType === 'sword' ? '🗡️' :
                               blockType === 'shield' ? '🛡️' :
                               blockType === 'draw' ? '💳' :
@@ -148,12 +149,14 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
             if (isPreview) cellClass += ' board-cell--preview';
             if (isInvalid) cellClass += ' board-cell--invalid';
             if (isCleared) cellClass += ' board-cell--cleared';
+            if (markers[key]) cellClass += ' board-cell--marked';
             if (selectedCard) cellClass += ' board-cell--selectable';
 
             return (
               <div
                 key={key}
                 className={cellClass}
+                title={markers[key] ? `${markers[key]}：行${r + 1}・列${c + 1}` : blockType === 'spore' ? `胞子：あと${cell?.sporeTurns}ターンで毒(1)` : undefined}
                 data-row={r}
                 data-col={c}
                 style={
@@ -183,6 +186,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells }: BoardP
                 onTouchStart={() => handleTouchStart(r, c)}
               >
                   {blockIcon}
+                  {markers[key] && <span className="cell-marker">{markers[key]}</span>}
               </div>
             );
           })

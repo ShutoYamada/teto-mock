@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { GameState, TetrominoCard } from '../types';
 
 interface RestScreenProps {

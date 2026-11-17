@@ -1,6 +1,5 @@
 import { GameState, TetrominoCard, Enemy } from '../../types';
 import { EventBus, DamageEvent, GameEventContext } from './EventBus';
-import { BOARD_SIZE } from '../../gameLogic';
 
 import { globalEffectRegistry } from '../effects/EffectRegistry';
 import { registerArtifactEffects } from '../effects/ArtifactEffects';
@@ -25,7 +24,8 @@ export function createDamagePipelineAndCalculate(
   stripeCount: number,
   placedRow?: number,
   placedCol?: number,
-  targetEnemy?: Enemy | null
+  targetEnemy?: Enemy | null,
+  bossModifiers: { placementMultiplier: number; lineBonus: number } = { placementMultiplier: 1, lineBonus: 0 }
 ): number {
   ensureEffectsRegistered();
   const bus = new EventBus();
@@ -36,7 +36,7 @@ export function createDamagePipelineAndCalculate(
   bus.subscribe((event) => {
     if (event.type !== 'OnBeforeDamage') return;
     if (event.card) {
-      event.baseDamage += event.card.attack;
+      event.baseDamage += Math.floor(event.card.attack * bossModifiers.placementMultiplier);
 
       let swordBuff = 0;
       let buffPerSword = 1;
@@ -44,8 +44,8 @@ export function createDamagePipelineAndCalculate(
          buffPerSword = 2;
       }
 
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
+      for (let r = 0; r < state.board.length; r++) {
+        for (let c = 0; c < state.board.length; c++) {
           if (event.context.state.board[r][c]?.blockType === 'sword') {
             swordBuff += buffPerSword;
           }
@@ -93,7 +93,7 @@ export function createDamagePipelineAndCalculate(
   bus.subscribe((event) => {
     if (event.type !== 'OnBeforeDamage') return;
     if (event.clearedCount > 0) {
-      event.baseDamage += event.clearedCount * 10;
+      event.baseDamage += event.clearedCount * 10 + bossModifiers.lineBonus;
       if (event.combo > 0) {
         event.addend += event.combo * 5;
       }
@@ -117,8 +117,8 @@ export function createDamagePipelineAndCalculate(
 
       if (cardResonanceCount > 0) {
         let boardResonanceCount = 0;
-        for (let r = 0; r < BOARD_SIZE; r++) {
-          for (let c = 0; c < BOARD_SIZE; c++) {
+        for (let r = 0; r < state.board.length; r++) {
+          for (let c = 0; c < state.board.length; c++) {
             if (event.context.state.board[r][c]?.blockType === 'resonance') {
               boardResonanceCount++;
             }
