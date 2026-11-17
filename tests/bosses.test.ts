@@ -1,8 +1,10 @@
+import { getEventPool } from '../src/events/explorationEvents';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { gameReducer, initGame } from '../src/gameReducer';
 import { BOSSES, rollBoss, createBossEncounter, prepareBossTurn, refreshBossIntents, onBossLines } from '../src/battle/bosses';
 import { clearLines, createEmptyBoard, generateDungeonMap, isDungeonNodeRevealed, createArtifact } from '../src/gameLogic';
+import { BASIC_ENHANCEMENTS, TETROMINO_DEFS } from '../src/tetrominos';
 import type { BossId, GameState, TetrominoCard } from '../src/types';
 
 // Artifact definitions carry effect functions; copy mutable data while retaining function references.
@@ -357,7 +359,7 @@ test('a complete three-stage route preserves stage identity across every node an
       s = gameReducer(s, { type: 'SELECT_REWARD', card: s.rewardCards[0] });
     } else if (s.screen === 'rest') s = gameReducer(s, { type: 'REST_SKIP' });
     else if (s.screen === 'shop') s = gameReducer(s, { type: 'LEAVE_SHOP' });
-    else if (s.screen === 'event') s = gameReducer(s, { type: 'EVENT_ASSAULT_FLEE' });
+    else if (s.screen === 'event') s = gameReducer(s, { type: 'EVENT_LEAVE' });
     else assert.fail(`unexpected screen: ${s.screen}`);
     if (step % 15 === 14) stages.push(s.stage);
     assert.equal(s.screen, step === 44 ? 'gameover' : 'dungeon');
@@ -424,4 +426,256 @@ test('dark nodes reveal on approach, remain known, and lantern reveals distant n
   assert.equal(isDungeonNodeRevealed(far, start.id, next.dungeonMap, true), true);
   const lantern = createArtifact('lantern');
   assert.ok(lantern.isEventReward && lantern.isEliteDrop && lantern.isShopSale);
+});
+
+
+test('suspicious magic is free and enhances every copy of only the selected basic mino', () => {
+  for (const type of ['I', 'O', 'T', 'S', 'Z', 'J', 'L'] as const) {
+    const initial = initGame();
+    const enhancedType = BASIC_ENHANCEMENTS[type]!;
+    const existingEnhanced = { ...initial.deck.find(c => c.type === type)!, type: enhancedType, id: 'already-enhanced' };
+    const state: GameState = { ...initial, screen: 'event', currentEventId: 'suspicious_magic', gold: 137,
+      deck: [...initial.deck, existingEnhanced] };
+    const before = snapshot(state);
+    const next = gameReducer(state, { type: 'EVENT_SUSPICIOUS_MAGIC_ENHANCE', minoType: type });
+    assert.equal(next.gold, 137);
+    assert.equal(next.screen, 'dungeon');
+    assert.equal(next.currentEventId, null);
+    assert.equal(next.deck.length, state.deck.length);
+    assert.deepEqual(state, before);
+    for (const [index, original] of state.deck.entries()) {
+      const changed = next.deck[index];
+      assert.equal(changed.id, original.id);
+      if (original.type === type) {
+        const def = TETROMINO_DEFS[enhancedType];
+        assert.equal(changed.type, enhancedType);
+        for (const key of ['attack', 'cost', 'shape', 'blockTypes', 'rarity', 'color', 'glowColor', 'effectText'] as const) {
+          assert.deepEqual(changed[key], def[key]);
+        }
+      } else assert.equal(changed, original);
+    }
+    // Replayed commands cannot charge or upgrade again after leaving the event.
+    assert.equal(gameReducer(next, { type: 'EVENT_SUSPICIOUS_MAGIC_ENHANCE', minoType: 'O' }), next);
+  }
+});
+
+test('suspicious magic works with zero gold, rejects invalid targets, and leaving is free', () => {
+  const state: GameState = { ...initGame(), screen: 'event', currentEventId: 'suspicious_magic', gold: 1 };
+  const command = { type: 'EVENT_SUSPICIOUS_MAGIC_ENHANCE', minoType: 'I' } as const;
+  assert.equal(gameReducer({ ...state, gold: 0 }, command).gold, 0);
+  for (const invalid of [
+    { ...state, deck: [] },
+    { ...state, currentEventId: 'fairy_mirror' as const },
+    { ...state, screen: 'dungeon' as const },
+  ]) assert.equal(gameReducer(invalid, command), invalid);
+  assert.equal(gameReducer(state, { ...command, minoType: 'EnhancedI' }), state);
+  assert.equal(gameReducer(state, { ...command, minoType: 'Sword' }), state);
+  assert.equal(gameReducer(state, command).gold, 1);
+  assert.equal(gameReducer({ ...state, gold: 0 }, command).deck.filter(c => c.type === 'I').length, 0);
+  const next = gameReducer(state, { type: 'EVENT_SUSPICIOUS_MAGIC_LEAVE' });
+  assert.equal(next.gold, 1);
+  assert.equal(next.deck, state.deck);
+  assert.equal(next.screen, 'dungeon');
+  assert.equal(next.currentEventId, null);
+  assert.equal(gameReducer(next, { type: 'EVENT_SUSPICIOUS_MAGIC_LEAVE' }), next);
+});
+
+
+test('suspicious magic is drawn from the event pool in every stage', () => {
+  for (const stage of [1, 2, 3]) {
+    const initial = initGame();
+    const node = initial.dungeonMap.find(n => n.depth === 0)!;
+    const state: GameState = { ...initial, stage,
+      dungeonMap: initial.dungeonMap.map(n => n.id === node.id ? { ...n, type: 'event' } : n) };
+    const originalRandom = Math.random;
+    const pool = getEventPool(stage);
+    const rolls = [0.5, (pool.indexOf('suspicious_magic') + 0.5) / pool.length];
+    try {
+      Math.random = () => rolls.shift() ?? 0.5;
+      const next = gameReducer(state, { type: 'START_BATTLE', nodeId: node.id });
+      assert.equal(next.screen, 'event');
+      assert.equal(next.currentEventId, 'suspicious_magic');
+    } finally {
+      Math.random = originalRandom;
+    }
+  }
+});
+
+
+function exploration(id: GameState['currentEventId'], changes: Partial<GameState> = {}): GameState {
+  return { ...initGame(), stage: 2, screen: 'event', currentEventId: id, gold: 100, artifacts: [], ...changes };
+}
+function resolveEvent(state: GameState, choice: { cardId?: string; minoType?: TetrominoCard['type'] } = {}, roll = .1) {
+  const before = snapshot(state);
+  const originalRandom = Math.random;
+  try {
+    Math.random = () => roll;
+    const next = gameReducer(state, { type: 'EVENT_EXPLORE_RESOLVE', ...choice });
+    assert.deepEqual(state, before, 'event resolution must not mutate its input');
+    return next;
+  } finally { Math.random = originalRandom; }
+}
+
+test('event pools honor stage restrictions and every eligible event can be drawn', () => {
+  for (const stage of [1, 2, 3]) {
+    const pool = getEventPool(stage);
+    assert.equal(pool.includes('rusty_forge'), stage !== 3);
+    assert.equal(pool.includes('blood_pact'), stage !== 1);
+    assert.equal(pool.includes('unstable_circle'), stage !== 1);
+    assert.equal(pool.includes('mystery_change'), stage === 1);
+    for (const id of ['healing_spring', 'forgotten_library', 'whimsical_well'] as const) assert.ok(pool.includes(id));
+    for (const [index, id] of pool.entries()) {
+      const initial = initGame();
+      const node = initial.dungeonMap[0];
+      const state: GameState = { ...initial, stage,
+        dungeonMap: initial.dungeonMap.map(n => n.id === node.id ? { ...n, type: 'event' } : n) };
+      const originalRandom = Math.random;
+      const rolls = [.5, (index + .5) / pool.length];
+      try {
+        Math.random = () => rolls.shift() ?? .5;
+        const next = gameReducer(state, { type: 'START_BATTLE', nodeId: node.id });
+        assert.equal(next.currentEventId, id);
+        assert.equal(next.eventResult, null);
+      } finally { Math.random = originalRandom; }
+    }
+  }
+});
+
+test('mystery fog spends all gold only on enhancing all basic cards', () => {
+  const state = exploration('mystery_change', { stage: 1, gold: 173 });
+  const before = snapshot(state);
+  const enhanced = gameReducer(state, { type: 'EVENT_MYSTERY_DIVE' });
+  assert.equal(enhanced.gold, 0);
+  assert.equal(enhanced.screen, 'dungeon');
+  assert.equal(enhanced.deck.length, state.deck.length);
+  assert.ok(enhanced.deck.every(c => c.type.startsWith('Enhanced')));
+  assert.deepEqual(state, before);
+  for (const invalid of [{ ...state, gold: 0 }, { ...state, deck: [] }, { ...state, screen: 'dungeon' as const },
+    { ...state, currentEventId: 'fairy_mirror' as const }]) {
+    assert.equal(gameReducer(invalid, { type: 'EVENT_MYSTERY_DIVE' }), invalid);
+  }
+  const replaced = gameReducer(state, { type: 'EVENT_MYSTERY_THROW', cardId: state.deck[0].id });
+  assert.equal(replaced.gold, 173);
+  assert.equal(gameReducer(state, { type: 'EVENT_MYSTERY_IGNORE' }).gold, 173);
+});
+
+test('spring clamps healing, floors 25 percent, and resolves only once', () => {
+  for (const [hp, maxHp, expected] of [[90, 100, 100], [1, 7, 2], [1, 3, 2], [1, 99, 25]]) {
+    const state = exploration('healing_spring', { hp, maxHp });
+    const next = resolveEvent(state);
+    assert.equal(next.hp, expected);
+    assert.equal(next.gold, state.gold);
+    assert.ok(next.eventResult);
+    assert.equal(next.screen, 'event');
+    assert.equal(resolveEvent(next), next);
+    assert.equal(gameReducer(next, { type: 'EVENT_LEAVE' }), next);
+    const done = gameReducer(next, { type: 'EVENT_CONTINUE' });
+    assert.equal(done.screen, 'dungeon');
+    assert.equal(done.currentEventId, null);
+    assert.equal(done.eventResult, null);
+  }
+});
+
+test('library deletes exactly the selected card and cannot delete the last card', () => {
+  const state = exploration('forgotten_library');
+  const target = state.deck[0];
+  const next = resolveEvent(state, { cardId: target.id });
+  assert.deepEqual(next.deck, state.deck.slice(1));
+  assert.equal(resolveEvent(state, { cardId: 'missing' }), state);
+  const last = { ...state, deck: [target] };
+  assert.equal(resolveEvent(last, { cardId: target.id }), last);
+});
+
+test('forge permanently lowers only the selected card, preserving effects and other copies', () => {
+  const initial = exploration('rusty_forge');
+  const target = { ...initial.deck[0], attack: 2, effectText: 'retained', blockTypes: [['sword']] as TetrominoCard['blockTypes'] };
+  const state = { ...initial, deck: [target, { ...target, id: 'other-copy' }] };
+  const next = resolveEvent(state, { cardId: target.id });
+  assert.equal(next.gold, 180);
+  assert.deepEqual(next.deck[0], { ...target, attack: 0 });
+  assert.equal(next.deck[1], state.deck[1]);
+  for (const invalid of [{ ...state, stage: 3 }, { ...state, deck: [{ ...target, attack: 1 }] }]) {
+    assert.equal(resolveEvent(invalid, { cardId: target.id }), invalid);
+  }
+  assert.equal(resolveEvent(state, { cardId: 'missing' }), state);
+});
+
+test('blood pact changes permanent maxima and clamps current HP and MP', () => {
+  for (const [hp, maxHp, expected] of [[50, 50, 45], [10, 50, 10], [6, 6, 1]]) {
+    const state = exploration('blood_pact', { hp, maxHp, mp: 5, maxMp: 5 });
+    const next = resolveEvent(state);
+    assert.equal(next.maxHp, maxHp - 5);
+    assert.equal(next.hp, expected);
+    assert.equal(next.maxMp, 6);
+    assert.equal(next.mp, 6);
+  }
+  const invalid = exploration('blood_pact', { hp: 5, maxHp: 5 });
+  assert.equal(resolveEvent(invalid), invalid);
+});
+
+test('well covers exact probability boundaries, payment, HP limits, and fatal failure', () => {
+  for (const [roll, gold, hp] of [[0, 80, 10], [.499999, 80, 10], [.5, 0, 25], [.799999, 0, 25], [.8, 0, 2], [.999999, 0, 2]]) {
+    const state = exploration('whimsical_well', { gold: 20, hp: 10, maxHp: 100 });
+    const next = resolveEvent(state, {}, roll);
+    assert.equal(next.gold, gold);
+    assert.equal(next.hp, hp);
+    assert.ok(next.eventResult);
+  }
+  assert.equal(resolveEvent(exploration('whimsical_well', { hp: 99, maxHp: 100 }), {}, .5).hp, 100);
+  const poor = exploration('whimsical_well', { gold: 19 });
+  assert.equal(resolveEvent(poor), poor);
+  const fatal = resolveEvent(exploration('whimsical_well', { hp: 3 }), {}, .8);
+  assert.equal(fatal.hp, 0);
+  assert.equal(fatal.screen, 'event');
+  assert.equal(resolveEvent(fatal), fatal);
+  assert.equal(gameReducer(fatal, { type: 'EVENT_CONTINUE' }).screen, 'gameover');
+});
+
+test('circle covers probability boundaries, all matching copies, and zero attack floor', () => {
+  const base = exploration('unstable_circle');
+  const state = { ...base, deck: [
+    { ...base.deck.find(c => c.type === 'I')!, attack: 0 },
+    { ...base.deck.find(c => c.type === 'I')!, id: 'second', attack: 5 },
+    base.deck.find(c => c.type === 'T')!,
+  ] };
+  for (const roll of [0, .599999, .6, .849999, .85, .999999]) {
+    const next = resolveEvent(state, { minoType: 'I' }, roll);
+    assert.equal(next.gold, state.gold);
+    assert.equal(next.deck.length, state.deck.length);
+    assert.equal(next.deck[2], state.deck[2]);
+    assert.equal(next.deck[0].id, state.deck[0].id);
+    if (roll < .6) {
+      assert.equal(next.deck[0].type, 'EnhancedI');
+      assert.equal(next.deck[1].attack, TETROMINO_DEFS.EnhancedI.attack);
+    } else if (roll < .85) assert.equal(next.deck, state.deck);
+    else {
+      assert.equal(next.deck[0].attack, 0);
+      assert.equal(next.deck[1].attack, 4);
+    }
+  }
+  for (const minoType of ['EnhancedI', 'Sword', 'L'] as const) assert.equal(resolveEvent(state, { minoType }), state);
+});
+
+test('new events reject invalid contexts, allow free exit, and preserve small decks into battle', () => {
+  for (const id of ['healing_spring', 'forgotten_library', 'rusty_forge', 'blood_pact', 'whimsical_well', 'unstable_circle'] as const) {
+    const state = exploration(id);
+    const wrongScreen = { ...state, screen: 'dungeon' as const };
+    assert.equal(resolveEvent(wrongScreen), wrongScreen);
+    assert.equal(gameReducer(state, { type: 'EVENT_CONTINUE' }), state);
+    const left = gameReducer(state, { type: 'EVENT_LEAVE' });
+    assert.equal(left.hp, state.hp);
+    assert.equal(left.gold, state.gold);
+    assert.equal(left.deck, state.deck);
+  }
+  for (const command of ['START_BATTLE', 'EVENT_ASSAULT_FIGHT'] as const) {
+    let state = exploration('rusty_forge');
+    state = { ...state, deck: [{ ...state.deck[0], attack: 2 }, state.deck[1]] };
+    state = resolveEvent(state, { cardId: state.deck[0].id });
+    state = gameReducer(state, { type: 'EVENT_CONTINUE' });
+    if (command === 'EVENT_ASSAULT_FIGHT') state = { ...state, screen: 'event', currentEventId: 'assault' };
+    const next = gameReducer(state, command === 'START_BATTLE'
+      ? { type: command, nodeId: state.dungeonMap[0].id } : { type: command });
+    assert.equal(next.hand.length + next.deck.length, 2);
+    assert.equal(next.hand[0].attack, 0);
+  }
 });

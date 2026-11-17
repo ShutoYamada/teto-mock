@@ -1747,3 +1747,12 @@ body {
 .node-step { font-size: .65rem; color: var(--text-muted); background: var(--bg-panel); border-radius: 4px; padding: 0 4px; }
 .dungeon-map-guide { margin: 0; font-size: .8rem; color: var(--text-muted); text-align: center; }
 .dungeon-map-guide span { display: block; margin-top: 4px; }
+
+.magic-event-panel { max-width: 840px; width: 100%; }
+.magic-mino-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px; margin: 24px 0; }
+.magic-mino-option { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.magic-mino-option > span { font-size: .8rem; color: var(--text-muted); }
+.magic-event-preview { padding: 12px 16px; margin: 16px 0; border: 1px solid var(--accent); border-radius: var(--radius); background: rgba(170, 68, 255, .1); }
+.magic-event-panel .rest-remove-actions { flex-wrap: wrap; }
+
+.event-danger { color: #ff9d9d; font-weight: bold; }

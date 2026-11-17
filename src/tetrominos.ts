@@ -692,3 +692,9 @@ export function generateShopCards(count: number = 5): TetrominoCard[] {
   }
   return shopCards;
 }
+
+// Only basic minos can be exchanged for their Enhanced counterpart.
+export const BASIC_ENHANCEMENTS: Partial<Record<TetrominoType, TetrominoType>> = {
+  I: 'EnhancedI', O: 'EnhancedO', T: 'EnhancedT', S: 'EnhancedS',
+  Z: 'EnhancedZ', J: 'EnhancedJ', L: 'EnhancedL',
+};

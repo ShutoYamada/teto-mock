@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { GameState, TetrominoCard } from '../types';
+import { ExplorationEvent } from './ExplorationEvent';
+import { EXPLORATION_EVENTS } from '../events/explorationEvents';
+import { BASIC_ENHANCEMENTS } from '../tetrominos';
+import { SuspiciousMagicEvent } from './SuspiciousMagicEvent';
 import { GameCommand } from '../gameReducer';
 
 interface Props {
@@ -11,6 +15,23 @@ export const EventScreen: React.FC<Props> = ({ state, dispatch }) => {
   const [fairyMirrorMode, setFairyMirrorMode] = useState<'menu' | 'select'>('menu');
   const [mysteryChangeMode, setMysteryChangeMode] = useState<'menu' | 'select'>('menu');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+
+  if (state.eventResult) {
+    return <div className="rest-screen"><div className="rest-panel magic-event-panel">
+      <h2 className="rest-title">イベントの結果</h2>
+      <p role="status">{state.eventResult}</p>
+      <button className="rest-action-btn confirm" onClick={() => dispatch({ type: 'EVENT_CONTINUE' })}>
+        {state.hp <= 0 ? 'ゲームオーバーへ' : 'マップへ戻る'}
+      </button>
+    </div></div>;
+  }
+  if (state.currentEventId && Object.hasOwnProperty.call(EXPLORATION_EVENTS, state.currentEventId)) {
+    return <ExplorationEvent key={state.currentEventId} state={state} dispatch={dispatch} />;
+  }
+
+  if (state.currentEventId === 'suspicious_magic') {
+    return <SuspiciousMagicEvent state={state} dispatch={dispatch} />;
+  }
 
   if (state.currentEventId === 'fairy_mirror') {
     if (fairyMirrorMode === 'menu') {
@@ -120,13 +141,17 @@ export const EventScreen: React.FC<Props> = ({ state, dispatch }) => {
           <h2 className="text-2xl font-bold mb-8">変化の霧</h2>
           <div className="bg-gray-800 p-8 rounded-lg shadow-lg max-w-lg w-full text-center">
             <p className="text-xl mb-8">変化の霧が立ち込める</p>
+            <p>飛び込むと所持Goldをすべて失い、デッキ内の基礎ミノすべてが対応するEnhancedに変わります。残金は0Gになります。</p>
+            {state.gold <= 0 && <p role="status">飛び込むには1G以上必要です。</p>}
+            {!state.deck.some(card => BASIC_ENHANCEMENTS[card.type]) && <p role="status">強化できる基礎ミノがありません。</p>}
             
             <div className="flex flex-col gap-4 w-full">
               <button
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition-colors"
+                disabled={state.gold <= 0 || !state.deck.some(card => BASIC_ENHANCEMENTS[card.type])}
                 onClick={() => dispatch({ type: 'EVENT_MYSTERY_DIVE' })}
               >
-                飛び込む (基礎カードを強化)
+                飛び込む（全{state.gold}Gを失い、全基礎ミノをEnhanced化）
               </button>
               
               <button

@@ -31,7 +31,7 @@ export type BoardState = CellValue[][];
 export type ScreenState = 'dungeon' | 'battle' | 'result' | 'gameover' | 'rest' | 'shop' | 'event';
 export type TurnState = 'player' | 'enemy';
 
-export type GameEventId = 'assault' | 'merchant_drop' | 'fairy_mirror' | 'mystery_change';
+export type GameEventId = 'assault' | 'merchant_drop' | 'fairy_mirror' | 'mystery_change' | 'suspicious_magic' | 'healing_spring' | 'forgotten_library' | 'rusty_forge' | 'blood_pact' | 'whimsical_well' | 'unstable_circle';
 
 export type StatusType = 'defense' | 'fury' | 'reflect' | 'fallen' | 'power' | 'taunt' | 'draw_down' | 'charging' | 'poison';
 
@@ -146,6 +146,7 @@ export interface GameState {
   dungeonMap: DungeonNode[];
   currentNodeId: string | null; // null means at the start (depth 0), ready to pick a depth 1 node
   currentEventId: GameEventId | null;
+  eventResult: string | null;
   
   // Result state
   rewardCards: TetrominoCard[];

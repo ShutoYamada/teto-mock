@@ -1,5 +1,6 @@
-import { GameState, TetrominoCard, TetrominoType, Artifact, BoardState, Enemy, Status, BlockType, GameEventId } from './types';
-import { buildDeck, generateRewardCards, generateShopCards, getCardPrice } from './tetrominos';
+import { getEventPool, resolveExplorationEvent, enhanceBasicCard } from './events/explorationEvents';
+import { GameState, TetrominoCard, TetrominoType, Artifact, BoardState, Enemy, Status, BlockType } from './types';
+import { buildDeck, generateRewardCards, generateShopCards, getCardPrice, BASIC_ENHANCEMENTS } from './tetrominos';
 import {
   createEmptyBoard,
   canPlaceCard,
@@ -47,7 +48,12 @@ export type GameCommand =
   | { type: 'EVENT_FAIRY_MIRROR_IGNORE' }
   | { type: 'EVENT_MYSTERY_DIVE' }
   | { type: 'EVENT_MYSTERY_THROW'; cardId: string }
-  | { type: 'EVENT_MYSTERY_IGNORE' };
+  | { type: 'EVENT_MYSTERY_IGNORE' }
+  | { type: 'EVENT_SUSPICIOUS_MAGIC_ENHANCE'; minoType: TetrominoType }
+  | { type: 'EVENT_SUSPICIOUS_MAGIC_LEAVE' }
+  | { type: 'EVENT_EXPLORE_RESOLVE'; cardId?: string; minoType?: TetrominoType }
+  | { type: 'EVENT_LEAVE' }
+  | { type: 'EVENT_CONTINUE' };
 
 export function initGame(): GameState {
   const deck = buildDeck();
@@ -80,6 +86,7 @@ export function initGame(): GameState {
     dungeonMap: generateDungeonMap(),
     currentNodeId: null,
     currentEventId: null,
+    eventResult: null,
     rewardCards: [],
     shopCards: [],
     shopArtifacts: [],
@@ -159,7 +166,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         ...(state.dungeonMap.find(n => n.id === state.currentNodeId)?.nextNodes ?? [])]);
       state = { ...state, dungeonMap: state.dungeonMap.map(n => visibleIds.has(n.id) ? { ...n, revealed: true } : n) };
       let deck = [...state.deck];
-      if (deck.length < 7) deck = buildDeck();
+      // Small decks remain intact after permanent card removal.
       
       let baseHandSize = 7;
       if (state.artifacts.some(a => a.id === 'devil_statue')) {
@@ -195,16 +202,14 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
             shopArtifacts: generateShopArtifacts(state.artifacts, 3),
           };
         } else {
-          const events: GameEventId[] = ['assault', 'merchant_drop', 'fairy_mirror'];
-          if (state.stage === 1) {
-            events.push('mystery_change');
-          }
+          const events = getEventPool(state.stage);
           const randomEvent = events[Math.floor(Math.random() * events.length)];
           return {
             ...state,
             screen: 'event',
             currentNodeId: command.nodeId,
             currentEventId: randomEvent,
+            eventResult: null,
           };
         }
       }
@@ -812,7 +817,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       }
 
       let deck = [...state.deck];
-      if (deck.length < 7) deck = buildDeck();
+      // Small decks remain intact after permanent card removal.
       
       let baseHandSize = 7;
       if (state.artifacts.some(a => a.id === 'devil_statue')) {
@@ -911,40 +916,43 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       };
     }
 
-    case 'EVENT_MYSTERY_DIVE': {
-      const mapping: Record<string, string> = {
-        'I': 'EnhancedI',
-        'O': 'EnhancedO',
-        'T': 'EnhancedT',
-        'S': 'EnhancedS',
-        'Z': 'EnhancedZ',
-        'J': 'EnhancedJ',
-        'L': 'EnhancedL',
+    case 'EVENT_EXPLORE_RESOLVE':
+      return resolveExplorationEvent(state, command);
+
+    case 'EVENT_LEAVE':
+      if (state.screen !== 'event' || !state.currentEventId || state.eventResult) return state;
+      return { ...state, screen: 'dungeon', currentEventId: null, eventResult: null };
+
+    case 'EVENT_CONTINUE':
+      if (state.screen !== 'event' || !state.eventResult) return state;
+      return { ...state, screen: state.hp <= 0 ? 'gameover' : 'dungeon', currentEventId: null, eventResult: null };
+
+    case 'EVENT_SUSPICIOUS_MAGIC_ENHANCE': {
+      if (state.screen !== 'event' || state.currentEventId !== 'suspicious_magic') return state;
+      const enhancedType = BASIC_ENHANCEMENTS[command.minoType];
+      if (!enhancedType || !state.deck.some(card => card.type === command.minoType)) return state;
+      return {
+        ...state,
+        deck: state.deck.map(card => card.type === command.minoType ? enhanceBasicCard(card) : card),
+        screen: 'dungeon',
+        currentEventId: null,
       };
-      const newDeck = state.deck.map(card => {
-        const mappedType = mapping[card.type];
-        if (mappedType) {
-          const newType = mappedType as TetrominoType;
-          const def = TETROMINO_DEFS[newType];
-          return {
-            ...card,
-            type: newType,
-            shape: def.shape,
-            blockTypes: def.blockTypes,
-            color: def.color,
-            glowColor: def.glowColor,
-            cost: def.cost,
-            attack: def.attack,
-            effectText: def.effectText,
-            rarity: def.rarity,
-          };
-        }
-        return card;
-      });
+    }
+
+    case 'EVENT_SUSPICIOUS_MAGIC_LEAVE': {
+      if (state.screen !== 'event' || state.currentEventId !== 'suspicious_magic') return state;
+      return { ...state, screen: 'dungeon', currentEventId: null };
+    }
+
+    case 'EVENT_MYSTERY_DIVE': {
+      if (state.screen !== 'event' || state.currentEventId !== 'mystery_change' || state.gold <= 0
+        || !state.deck.some(card => BASIC_ENHANCEMENTS[card.type])) return state;
+      const newDeck = state.deck.map(enhanceBasicCard);
       return {
         ...state,
         screen: 'dungeon',
         deck: newDeck,
+        gold: 0,
         currentEventId: null,
       };
     }
