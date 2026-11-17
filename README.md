@@ -75,3 +75,11 @@ pnpm preview
 ゲーム全体は[ゲーム仕様](./docs/GAME_SPEC.md)、UIは[画面仕様](./docs/SCREEN_SPEC.md)、戦闘ルールは[戦闘仕様](./docs/BATTLE/_SPEC.md)を参照してください。
 
 仕様書一覧とアシスタント向け作業方針は[AGENTS.md](./AGENTS.md)にまとめています。ゲームルールやUIの仕様を変更した場合は関連する仕様書も更新し、試験的な変更の場合はその旨を明記します。
+
+## GitHub Pagesへのデプロイ
+
+`.github/workflows/deploy.yml` が `main` / `master` へのpush、または手動実行で動きます。リポジトリの Settings → Pages → Source は GitHub Actions に設定してください。
+
+ビルドジョブで `dist/index.html` を確認し、`github-pages` という名前でPages用成果物をアップロードします。デプロイジョブはその完了を待ち、返された成果物IDが同じワークフロー実行の有効な成果物か確認してから公開します。成果物の保持期間は7日です。
+
+`No artifacts named "github-pages"` が出た場合は、ビルドジョブのアップロード結果と成果物の保持期限を確認してください。削除済み・期限切れの場合は、デプロイジョブだけでなく **Re-run all jobs** または新しい手動実行で、ビルドからやり直してください。
