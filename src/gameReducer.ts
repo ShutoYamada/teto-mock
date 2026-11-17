@@ -154,6 +154,10 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       const node = state.dungeonMap.find(n => n.id === command.nodeId);
       const reachable = state.currentNodeId ? state.dungeonMap.find(n => n.id === state.currentNodeId)?.nextNodes.includes(command.nodeId) : node?.depth === 0;
       if (!node || !reachable) return state;
+      // Preserve knowledge of nodes revealed from both the old and new location.
+      const visibleIds = new Set([node.id, ...node.nextNodes,
+        ...(state.dungeonMap.find(n => n.id === state.currentNodeId)?.nextNodes ?? [])]);
+      state = { ...state, dungeonMap: state.dungeonMap.map(n => visibleIds.has(n.id) ? { ...n, revealed: true } : n) };
       let deck = [...state.deck];
       if (deck.length < 7) deck = buildDeck();
       

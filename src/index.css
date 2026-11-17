@@ -1733,3 +1733,17 @@ body {
 .boss-guide { max-width: 800px; margin-bottom: 12px; }
 /* Keep the hand below the board when boss information makes the page taller. */
 .battle-screen > .footer { position: static; }
+
+/* Dungeon routes use shared coordinates for paths and steps. */
+.dungeon-map-container { overflow-x: auto; padding: 24px 12px; }
+.dungeon-map-visual { position: relative; display: block; min-width: 420px; margin: 0 auto; padding: 0; }
+.dungeon-paths { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.dungeon-path { fill: none; stroke: #77718e; stroke-width: 2; vector-effect: non-scaling-stroke; opacity: .55; }
+.dungeon-path.available { stroke: #d68aff; stroke-width: 4; opacity: 1; }
+.dungeon-map-visual .node-wrapper { position: absolute; transform: translate(-50%, -50%); width: 96px; gap: 3px; }
+.dungeon-map-visual .dungeon-node { min-width: 0; width: 100%; padding: 10px 5px; font-size: .8rem; background-color: #242132; }
+.dungeon-map-visual .dungeon-node.locked { opacity: .75; }
+.dungeon-map-visual .dungeon-node.dark { background: #11101c; border-style: dashed; color: #aca4be; }
+.node-step { font-size: .65rem; color: var(--text-muted); background: var(--bg-panel); border-radius: 4px; padding: 0 4px; }
+.dungeon-map-guide { margin: 0; font-size: .8rem; color: var(--text-muted); text-align: center; }
+.dungeon-map-guide span { display: block; margin-top: 4px; }

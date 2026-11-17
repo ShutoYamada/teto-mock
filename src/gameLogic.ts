@@ -671,76 +671,45 @@ export function rotateBlockTypes(blockTypes: BlockType[][] | undefined): BlockTy
 
 export function generateDungeonMap(): DungeonNode[] {
   const map: DungeonNode[] = [];
-  const TOTAL_DEPTH = 15;
-  const NODES_PER_DEPTH = 3;
-
-  // Depth 0 (Start Nodes)
-  for (let i = 0; i < NODES_PER_DEPTH; i++) {
-    map.push({
-      id: `node-0-${i}`,
-      depth: 0,
-      type: 'battle',
-      nextNodes: [],
+  // Some stages contain a contiguous band of darkness; the boss stays public.
+  const darkStart = Math.random() < 0.6 ? 3 + Math.floor(Math.random() * 6) : -1;
+  for (let depth = 0; depth < 15; depth++) {
+    const count = depth === 14 ? 1 : depth === 0 ? 1 + Math.floor(Math.random() * 3) : 2 + Math.floor(Math.random() * 3);
+    const nodes: DungeonNode[] = [];
+    for (let i = 0; i < count; i++) {
+      const roll = Math.random();
+      const type: DungeonNodeType = depth === 14 ? 'boss' : depth === 0 ? 'battle'
+        : depth === 13 ? 'rest'
+        : roll < 0.45 ? 'battle' : roll < 0.62 ? 'event' : roll < 0.76 ? 'elite' : roll < 0.88 ? 'rest' : 'shop';
+      nodes.push({ id: `node-${depth}-${i}`, depth, type, nextNodes: [],
+        x: count === 1 ? 50 : 12 + (76 * i / (count - 1)) + (Math.random() - 0.5) * 8,
+        y: (Math.random() - 0.5) * 28,
+        isDark: darkStart >= 0 && depth >= darkStart && depth < darkStart + 3,
+      });
+    }
+    const previous = map.filter(node => node.depth === depth - 1);
+    const connect = (from: DungeonNode, to: DungeonNode) => {
+      if (!from.nextNodes.includes(to.id)) from.nextNodes.push(to.id);
+    };
+    // Every node has an exit and an entrance. Nearest connections keep routes local.
+    previous.forEach(from => {
+      const nearest = [...nodes].sort((a, b) => Math.abs(a.x! - from.x!) - Math.abs(b.x! - from.x!));
+      connect(from, nearest[0]);
+      if (nearest[1] && Math.random() < 0.45) connect(from, nearest[1]);
     });
+    nodes.forEach(to => {
+      if (previous.length && !previous.some(from => from.nextNodes.includes(to.id))) {
+        connect([...previous].sort((a, b) => Math.abs(a.x! - to.x!) - Math.abs(b.x! - to.x!))[0], to);
+      }
+    });
+    map.push(...nodes);
   }
-
-  // Depth 1 to 14
-  for (let d = 1; d < TOTAL_DEPTH; d++) {
-    const isBoss = d === TOTAL_DEPTH - 1;
-    // Boss layer only needs 1 node
-    const numNodes = isBoss ? 1 : NODES_PER_DEPTH;
-
-    // Create nodes for current depth
-    for (let i = 0; i < numNodes; i++) {
-      let type: DungeonNodeType = 'battle';
-      if (isBoss) type = 'boss';
-      else if (d % 6 === 0) type = 'shop';
-      else if (d % 4 === 0) type = 'event';
-      else if (d % 3 === 0) type = 'elite';
-      else if (d % 5 === 0) type = 'rest';
-
-      map.push({
-        id: `node-${d}-${i}`,
-        depth: d,
-        type,
-        nextNodes: [],
-      });
-    }
-
-    // Connect previous depth to current depth
-    const prevNodes = map.filter(n => n.depth === d - 1);
-    const currNodes = map.filter(n => n.depth === d);
-
-    if (isBoss) {
-      // Connect all previous nodes to the single boss node
-      prevNodes.forEach(pn => pn.nextNodes.push(currNodes[0].id));
-    } else {
-      // Connect each prev node to 1-2 next nodes to create branching
-      prevNodes.forEach((pn, i) => {
-        // Guarantee at least straight path connection
-        pn.nextNodes.push(currNodes[i].id);
-        
-        // Randomly connect to an adjacent node (criss-cross)
-        if (Math.random() > 0.5) {
-          const adjIndex = (i + 1) % NODES_PER_DEPTH;
-          if (!pn.nextNodes.includes(currNodes[adjIndex].id)) {
-            pn.nextNodes.push(currNodes[adjIndex].id);
-          }
-        }
-      });
-      
-      // Ensure all current nodes are reachable
-      currNodes.forEach(cn => {
-        const isReachable = prevNodes.some(pn => pn.nextNodes.includes(cn.id));
-        if (!isReachable) {
-           const randomPrev = prevNodes[Math.floor(Math.random() * prevNodes.length)];
-           randomPrev.nextNodes.push(cn.id);
-        }
-      });
-    }
-  }
-
   return map;
+}
+
+export function isDungeonNodeRevealed(node: DungeonNode, currentNodeId: string | null, map: DungeonNode[], hasLantern: boolean): boolean {
+  return hasLantern || !node.isDark || !!node.revealed || node.id === currentNodeId
+    || (currentNodeId ? !!map.find(n => n.id === currentNodeId)?.nextNodes.includes(node.id) : node.depth === 0);
 }
 
 export function getEnemyEncounter(stage: number, type: 'normal' | 'elite'): Enemy[] {
@@ -781,6 +750,14 @@ export function getEnemyEncounter(stage: number, type: 'normal' | 'elite'): Enem
 }
 
 export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
+  lantern: {
+    name: 'ランタン',
+    rarity: 'common',
+    description: '所持している間、暗域を無効化し、すべてのステップの種類を見通せる',
+    isEliteDrop: true,
+    isShopSale: true,
+    isEventReward: true,
+  },
   brave_sword: {
     name: '勇者の剣',
     rarity: 'uncommon',

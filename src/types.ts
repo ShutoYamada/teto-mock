@@ -88,6 +88,10 @@ export interface DungeonNode {
   id: string;
   depth: number;
   type: DungeonNodeType;
+  x?: number; // Horizontal position (0–100)
+  y?: number; // Vertical offset within the depth
+  isDark?: boolean;
+  revealed?: boolean;
   nextNodes: string[]; // IDs of nodes this node connects to
 }
 

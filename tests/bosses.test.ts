@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { gameReducer, initGame } from '../src/gameReducer';
 import { BOSSES, rollBoss, createBossEncounter, prepareBossTurn, refreshBossIntents, onBossLines } from '../src/battle/bosses';
-import { clearLines, createEmptyBoard } from '../src/gameLogic';
+import { clearLines, createEmptyBoard, generateDungeonMap, isDungeonNodeRevealed, createArtifact } from '../src/gameLogic';
 import type { BossId, GameState, TetrominoCard } from '../src/types';
 
 // Artifact definitions carry effect functions; copy mutable data while retaining function references.
@@ -370,7 +370,8 @@ test('elite rewards survive defeating the elite before its escorts', () => {
   let s = initGame();
   const parent = s.dungeonMap.find(n => n.depth === 2)!;
   const node = s.dungeonMap.find(n => n.depth === 3 && parent.nextNodes.includes(n.id))!;
-  s = { ...s, stage: 2, currentNodeId: parent.id, artifacts: [] };
+  s = { ...s, stage: 2, currentNodeId: parent.id, artifacts: [],
+    dungeonMap: s.dungeonMap.map(n => n.id === node.id ? { ...n, type: 'elite' } : n) };
   s = gameReducer(s, { type: 'START_BATTLE', nodeId: node.id });
   assert.equal(s.enemies.length, 3);
   const expectedGold = s.enemies.reduce((sum, e) => sum + e.goldReward, 0);
@@ -382,4 +383,45 @@ test('elite rewards survive defeating the elite before its escorts', () => {
   }
   assert.ok(s.rewardArtifact);
   assert.equal(s.rewardGold, expectedGold);
+});
+
+
+test('generated maps keep all routes reachable and exactly fifteen steps long', () => {
+  for (let run = 0; run < 100; run++) {
+    const map = generateDungeonMap();
+    const reachable = new Set(map.filter(n => n.depth === 0).map(n => n.id));
+    for (const node of map) {
+      assert.ok(reachable.has(node.id));
+      assert.ok(node.x! >= 8 && node.x! <= 92);
+      if (node.depth === 14) {
+        assert.equal(node.type, 'boss');
+        assert.equal(node.nextNodes.length, 0);
+        assert.equal(node.isDark, false);
+      } else {
+        assert.ok(node.nextNodes.length > 0);
+        for (const id of node.nextNodes) {
+          assert.equal(map.find(n => n.id === id)?.depth, node.depth + 1);
+          reachable.add(id);
+        }
+      }
+    }
+    assert.equal(map.filter(n => n.type === 'boss').length, 1);
+  }
+});
+
+test('dark nodes reveal on approach, remain known, and lantern reveals distant nodes', () => {
+  let state = initGame();
+  state = { ...state, dungeonMap: state.dungeonMap.map(n => ({ ...n, isDark: n.depth > 0 })) };
+  const start = state.dungeonMap[0];
+  const near = state.dungeonMap.find(n => n.id === start.nextNodes[0])!;
+  const far = state.dungeonMap.find(n => n.depth === 10)!;
+  assert.equal(isDungeonNodeRevealed(near, null, state.dungeonMap, false), false);
+  const next = gameReducer(state, { type: 'START_BATTLE', nodeId: start.id });
+  assert.equal(isDungeonNodeRevealed(near, start.id, next.dungeonMap, false), true);
+  assert.equal(next.dungeonMap.find(n => n.id === near.id)?.revealed, true);
+  assert.equal(state.dungeonMap.find(n => n.id === near.id)?.revealed, undefined);
+  assert.equal(isDungeonNodeRevealed(far, start.id, next.dungeonMap, false), false);
+  assert.equal(isDungeonNodeRevealed(far, start.id, next.dungeonMap, true), true);
+  const lantern = createArtifact('lantern');
+  assert.ok(lantern.isEventReward && lantern.isEliteDrop && lantern.isShopSale);
 });
