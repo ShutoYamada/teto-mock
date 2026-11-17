@@ -1,7 +1,8 @@
+import { isSealed } from '../curses';
 import React, { useState, useCallback, useRef } from 'react';
 import type { TetrominoCard } from '../types';
 import { canPlaceCard } from '../gameLogic';
-import type { BoardState } from '../types';
+import type { LineTarget, BoardState } from '../types';
 import { TETROMINO_DEFS } from '../tetrominos';
 
 interface BoardProps {
@@ -9,10 +10,11 @@ interface BoardProps {
   selectedCard: TetrominoCard | null;
   onCellClick: (row: number, col: number) => void;
   clearedCells: Set<string>;
+  sealedLines?: LineTarget[];
   markers?: Record<string, string>;
 }
 
-export function Board({ board, selectedCard, onCellClick, clearedCells, markers = {} }: BoardProps) {
+export function Board({ board, selectedCard, onCellClick, clearedCells, markers = {}, sealedLines = [] }: BoardProps) {
   const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
   const touchTimer = useRef<number | null>(null);
   const lastTouchCell = useRef<{ row: number; col: number } | null>(null);
@@ -20,7 +22,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells, markers 
   const getPreviewCells = useCallback((): Set<string> => {
     if (!selectedCard || !hoverCell) return new Set();
     const cells = new Set<string>();
-    if (!canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col)) return cells;
+    if (!canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col, sealedLines)) return cells;
     for (let r = 0; r < selectedCard.shape.length; r++) {
       for (let c = 0; c < selectedCard.shape[r].length; c++) {
         if (selectedCard.shape[r][c]) {
@@ -29,17 +31,17 @@ export function Board({ board, selectedCard, onCellClick, clearedCells, markers 
       }
     }
     return cells;
-  }, [selectedCard, hoverCell, board]);
+  }, [selectedCard, hoverCell, board, sealedLines]);
 
   const isInvalidDrop = useCallback((): boolean => {
     if (!selectedCard || !hoverCell) return false;
-    return !canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col);
-  }, [selectedCard, hoverCell, board]);
+    return !canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col, sealedLines);
+  }, [selectedCard, hoverCell, board, sealedLines]);
 
   const getInvalidPreviewCells = useCallback((): Set<string> => {
     if (!selectedCard || !hoverCell) return new Set();
     const cells = new Set<string>();
-    if (canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col)) return cells;
+    if (canPlaceCard(board, selectedCard, hoverCell.row, hoverCell.col, sealedLines)) return cells;
     // Show what the card would cover (clamped to board)
     for (let r = 0; r < selectedCard.shape.length; r++) {
       for (let c = 0; c < selectedCard.shape[r].length; c++) {
@@ -52,7 +54,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells, markers 
       }
     }
     return cells;
-  }, [selectedCard, hoverCell, board]);
+  }, [selectedCard, hoverCell, board, sealedLines]);
 
   const handleTouchStart = (r: number, c: number) => {
     if (!selectedCard) return;
@@ -131,7 +133,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells, markers 
                }
             }
             
-            const blockIcon = blockType === 'spore' ? `菌${cell?.sporeTurns ?? 2}` : blockType === 'bomb' ? '💣' :
+            const blockIcon = blockType === 'weakness' ? '💔' : blockType === 'spore' ? `菌${cell?.sporeTurns ?? 2}` : blockType === 'bomb' ? '💣' :
                               blockType === 'sword' ? '🗡️' :
                               blockType === 'shield' ? '🛡️' :
                               blockType === 'draw' ? '💳' :
@@ -145,7 +147,9 @@ export function Board({ board, selectedCard, onCellClick, clearedCells, markers 
                                blockType === 'hard' ? '🪨' :
                                blockType === 'mana' ? '💧' : previewBlockIcon;
 
+            const sealed = isSealed(sealedLines, r, c);
             let cellClass = 'board-cell';
+            if (sealed) cellClass += ' board-cell--sealed';
             if (isPreview) cellClass += ' board-cell--preview';
             if (isInvalid) cellClass += ' board-cell--invalid';
             if (isCleared) cellClass += ' board-cell--cleared';
@@ -156,7 +160,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells, markers 
               <div
                 key={key}
                 className={cellClass}
-                title={markers[key] ? `${markers[key]}：行${r + 1}・列${c + 1}` : blockType === 'spore' ? `胞子：あと${cell?.sporeTurns}ターンで毒(1)` : undefined}
+                title={sealed ? '封鎖：このマスへのミノ配置不可' : blockType === 'weakness' ? '弱点：被ダメージ+3' : markers[key] ? `${markers[key]}：行${r + 1}・列${c + 1}` : blockType === 'spore' ? `胞子：あと${cell?.sporeTurns}ターンで毒(1)` : undefined}
                 data-row={r}
                 data-col={c}
                 style={
@@ -186,6 +190,7 @@ export function Board({ board, selectedCard, onCellClick, clearedCells, markers 
                 onTouchStart={() => handleTouchStart(r, c)}
               >
                   {blockIcon}
+                  {sealed && <span className="seal-marker">封</span>}
                   {markers[key] && <span className="cell-marker">{markers[key]}</span>}
               </div>
             );

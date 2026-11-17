@@ -143,12 +143,12 @@ export const EventScreen: React.FC<Props> = ({ state, dispatch }) => {
             <p className="text-xl mb-8">変化の霧が立ち込める</p>
             <p>飛び込むと所持Goldをすべて失い、デッキ内の基礎ミノすべてが対応するEnhancedに変わります。残金は0Gになります。</p>
             {state.gold <= 0 && <p role="status">飛び込むには1G以上必要です。</p>}
-            {!state.deck.some(card => BASIC_ENHANCEMENTS[card.type]) && <p role="status">強化できる基礎ミノがありません。</p>}
+            {!state.deck.some(card => !card.curse && BASIC_ENHANCEMENTS[card.type]) && <p role="status">強化できる基礎ミノがありません。</p>}
             
             <div className="flex flex-col gap-4 w-full">
               <button
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition-colors"
-                disabled={state.gold <= 0 || !state.deck.some(card => BASIC_ENHANCEMENTS[card.type])}
+                disabled={state.gold <= 0 || !state.deck.some(card => !card.curse && BASIC_ENHANCEMENTS[card.type])}
                 onClick={() => dispatch({ type: 'EVENT_MYSTERY_DIVE' })}
               >
                 飛び込む（全{state.gold}Gを失い、全基礎ミノをEnhanced化）

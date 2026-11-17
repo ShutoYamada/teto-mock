@@ -1,3 +1,4 @@
+import { CURSE_USE_COST, emptyCurseEffects, resolveHandCurses, weaknessBonus } from './curses';
 import { getEventPool, resolveExplorationEvent, enhanceBasicCard } from './events/explorationEvents';
 import { GameState, TetrominoCard, TetrominoType, Artifact, BoardState, Enemy, Status, BlockType } from './types';
 import { buildDeck, generateRewardCards, generateShopCards, getCardPrice, BASIC_ENHANCEMENTS } from './tetrominos';
@@ -59,6 +60,7 @@ export function initGame(): GameState {
   const deck = buildDeck();
   return {
     screen: 'dungeon',
+    pendingCurseEffects: emptyCurseEffects(), sealedLines: [],
     board: createEmptyBoard(BOARD_SIZE),
     boardSize: BOARD_SIZE,
     deck,
@@ -103,14 +105,14 @@ export function initGame(): GameState {
 }
 
 function finishBattle(state: GameState): GameState {
-  if (state.hp <= 0) return { ...state, hp: 0, screen: 'gameover', bossBattle: null };
+  if (state.hp <= 0) return { ...state, hp: 0, screen: 'gameover', bossBattle: null, sealedLines: [], pendingCurseEffects: emptyCurseEffects() };
   const won = state.bossBattle
     ? !state.enemies.some(e => e.bossRole !== 'minion' && e.hp > 0)
     : !state.enemies.some(e => e.hp > 0);
   if (!won) return state;
   const rewardGold = Math.floor(state.encounterGold * (state.artifacts.some(a => a.id === 'abacus') ? 1.1 : 1));
   return {
-    ...state, screen: 'result', bossBattle: null, enemies: [], targetEnemyId: null,
+    ...state, screen: 'result', bossBattle: null, enemies: [], targetEnemyId: null, sealedLines: [], pendingCurseEffects: emptyCurseEffects(),
     board: state.board.map(row => row.map(cell => cell?.blockType === 'spore' ? null : cell)),
     statuses: [],
     deck: [...state.deck, ...state.hand, ...state.discardPile, ...state.exilePile],
@@ -126,7 +128,7 @@ function drawNextHand(state: GameState): GameState {
   let discardPile = [...state.discardPile, ...state.hand];
   const hand: TetrominoCard[] = [];
   const reduction = state.statuses.find(s => s.type === 'draw_down')?.value ?? 0;
-  const count = Math.max(1, 5 - reduction - (state.artifacts.some(a => a.id === 'devil_statue') ? 1 : 0));
+  const count = Math.max(0, 5 - state.pendingCurseEffects.drawLoss - reduction - (state.artifacts.some(a => a.id === 'devil_statue') ? 1 : 0));
   for (let i = 0; i < count; i++) {
     if (!deck.length) { deck = [...discardPile].sort(() => Math.random() - .5); discardPile = []; }
     if (deck.length) hand.push(deck.shift()!);
@@ -147,7 +149,7 @@ function drawNextHand(state: GameState): GameState {
     }
   }
   const enemies = state.enemies.map(e => ({ ...e, statuses: tick(e.statuses) }));
-  return { ...state, board, hand, deck, discardPile, enemies, statuses: tick(state.statuses), mp: state.maxMp, shield: 0, turn: 'player', combo: 0,
+  return { ...state, board, hand, deck, discardPile, enemies, statuses: tick(state.statuses), mp: Math.max(0, state.maxMp - state.pendingCurseEffects.mpLoss), sealedLines: state.pendingCurseEffects.sealedLines, pendingCurseEffects: emptyCurseEffects(), shield: 0, turn: 'player', combo: 0,
     targetEnemyId: enemies.some(e => e.id === state.targetEnemyId) ? state.targetEnemyId : enemies[0]?.id ?? null };
 }
 
@@ -227,6 +229,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       return prepareBossTurn({
         ...state,
         screen: 'battle',
+        sealedLines: [], pendingCurseEffects: emptyCurseEffects(),
         board,
         hand,
         deck,
@@ -250,8 +253,18 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
     }
 
     case 'SELECT_CARD': {
+      if (state.screen !== 'battle' || state.turn !== 'player') return state;
       const card = state.hand.find(c => c.id === command.cardId);
-      if (card && state.mp < card.cost) {
+      if (!card) return state;
+      if (card.curse) {
+        if (!state.artifacts.some(a => a.id === 'ofuda') || state.mp < CURSE_USE_COST) return state;
+        return {
+          ...state, mp: state.mp - CURSE_USE_COST,
+          hand: state.hand.filter(c => c.id !== card.id),
+          discardPile: [...state.discardPile, card], selectedCardId: null,
+        };
+      }
+      if (state.mp < card.cost) {
         return state;
       }
       return {
@@ -266,7 +279,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
     case 'ROTATE_CARD': {
       const cardIndex = state.hand.findIndex(c => c.id === command.cardId);
-      if (cardIndex === -1) return state;
+      if (cardIndex === -1 || state.hand[cardIndex].curse) return state;
       
       const newHand = [...state.hand];
       const oldCard = newHand[cardIndex];
@@ -283,7 +296,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       const selectedCard = state.hand.find(c => c.id === state.selectedCardId);
       if (!selectedCard || state.screen !== 'battle' || state.turn !== 'player') return state;
       if (state.mp < selectedCard.cost) return state;
-      if (!canPlaceCard(state.board, selectedCard, command.row, command.col)) return state;
+      if (!canPlaceCard(state.board, selectedCard, command.row, command.col, state.sealedLines)) return state;
 
       const boardAfterPlace = placeCard(state.board, selectedCard, command.row, command.col);
       const clearResult = clearLines(boardAfterPlace);
@@ -414,7 +427,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         if (e.id === state.targetEnemyId || bowCount > 0) {
           const reflect = e.statuses.find(s => s.type === 'reflect');
           if (reflect && damage > 0) {
-            reflectDamage += reflect.value;
+            reflectDamage += reflect.value > 0 ? reflect.value + weaknessBonus(newBoard) : 0;
           }
         }
       });
@@ -445,6 +458,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
     case 'END_PLAYER_TURN': {
       if (state.screen !== 'battle' || state.turn !== 'player') return state;
+      state = resolveHandCurses(state);
       let poisonDamage = 0;
       const newStatuses = state.statuses.map(s => {
         if (s.type === 'poison') {
@@ -457,13 +471,13 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       let newHp = state.hp;
       let nextScreen: GameState['screen'] = state.screen;
       if (poisonDamage > 0) {
-        newHp = Math.max(0, state.hp - poisonDamage);
+        newHp = Math.max(0, state.hp - poisonDamage - weaknessBonus(state.board));
         if (newHp === 0) {
           nextScreen = 'gameover';
         }
       }
 
-      if (newHp === 0) return { ...state, hp: 0, screen: 'gameover', bossBattle: null };
+      if (newHp === 0) return { ...state, hp: 0, screen: 'gameover', bossBattle: null, sealedLines: [], pendingCurseEffects: emptyCurseEffects() };
       return endBossPlayerTurn({
         ...state, 
         turn: 'enemy', 
@@ -497,14 +511,15 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         const count = enemy.intent.count || 1;
         return acc + (damagePerHit * count);
       }, 0);
-      const totalDamage = spikeDamage + enemyDamage;
-      
-      let actualDamage = totalDamage;
-      
-      const isPlayerFallen = state.statuses.some(s => s.type === 'fallen');
-      if (isPlayerFallen) {
-        actualDamage = Math.floor(actualDamage * 1.5);
-      }
+      const bonus = weaknessBonus(state.board);
+      const fallen = state.statuses.some(s => s.type === 'fallen');
+      const hitDamage = (damage: number) => {
+        if (damage <= 0) return 0;
+        const increased = damage + bonus;
+        return fallen ? Math.floor(increased * 1.5) : increased;
+      };
+      let actualDamage = hitDamage(spikeDamage) + state.enemies.reduce((sum, enemy) =>
+        sum + hitDamage(enemy.nextAttack) * (enemy.intent.count || 1), 0);
 
       actualDamage = Math.max(0, actualDamage - state.shield);
       
@@ -516,7 +531,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       if (newHp <= 0) newHp = 0;
       
       if (newHp === 0) {
-        return { ...state, hp: 0, screen: 'gameover' };
+        return { ...state, hp: 0, screen: 'gameover', sealedLines: [], pendingCurseEffects: emptyCurseEffects() };
       }
 
       let newHand: TetrominoCard[] = [];
@@ -533,7 +548,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         targetDraw -= 1;
       }
       
-      targetDraw = Math.max(1, targetDraw);
+      targetDraw = Math.max(0, targetDraw - state.pendingCurseEffects.drawLoss);
 
       for (let i = 0; i < targetDraw; i++) {
         if (newDeck.length === 0) {
@@ -668,7 +683,9 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
         ...state,
         screen: nextScreen,
         hp: newHp,
-        mp: state.maxMp,
+        mp: Math.max(0, state.maxMp - state.pendingCurseEffects.mpLoss),
+        sealedLines: nextScreen === 'result' ? [] : state.pendingCurseEffects.sealedLines,
+        pendingCurseEffects: emptyCurseEffects(),
         board: currentBoard,
         gold: finalGold,
         encounterGold,
@@ -829,6 +846,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
       return {
         ...state,
         screen: 'battle',
+        sealedLines: [], pendingCurseEffects: emptyCurseEffects(),
         board,
         hand,
         deck,
@@ -930,10 +948,10 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
     case 'EVENT_SUSPICIOUS_MAGIC_ENHANCE': {
       if (state.screen !== 'event' || state.currentEventId !== 'suspicious_magic') return state;
       const enhancedType = BASIC_ENHANCEMENTS[command.minoType];
-      if (!enhancedType || !state.deck.some(card => card.type === command.minoType)) return state;
+      if (!enhancedType || !state.deck.some(card => !card.curse && card.type === command.minoType)) return state;
       return {
         ...state,
-        deck: state.deck.map(card => card.type === command.minoType ? enhanceBasicCard(card) : card),
+        deck: state.deck.map(card => !card.curse && card.type === command.minoType ? enhanceBasicCard(card) : card),
         screen: 'dungeon',
         currentEventId: null,
       };
@@ -946,7 +964,7 @@ export function gameReducer(state: GameState, command: GameCommand): GameState {
 
     case 'EVENT_MYSTERY_DIVE': {
       if (state.screen !== 'event' || state.currentEventId !== 'mystery_change' || state.gold <= 0
-        || !state.deck.some(card => BASIC_ENHANCEMENTS[card.type])) return state;
+        || !state.deck.some(card => !card.curse && BASIC_ENHANCEMENTS[card.type])) return state;
       const newDeck = state.deck.map(enhanceBasicCard);
       return {
         ...state,

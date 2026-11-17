@@ -1,3 +1,4 @@
+import { isSealed } from './curses';
 import type { BoardState, TetrominoCard, CellValue, DungeonNode, DungeonNodeType, BlockType, Enemy, EnemyAction, GameState, Status, Artifact } from './types';
 // GameState and EnemyStatus are used in type signatures.
 
@@ -14,15 +15,17 @@ export function canPlaceCard(
   board: BoardState,
   card: TetrominoCard,
   startRow: number,
-  startCol: number
+  startCol: number,
+  sealedLines: import('./types').LineTarget[] = []
 ): boolean {
+  if (card.curse) return false;
   for (let r = 0; r < card.shape.length; r++) {
     for (let c = 0; c < card.shape[r].length; c++) {
       if (!card.shape[r][c]) continue;
       const br = startRow + r;
       const bc = startCol + c;
       if (br < 0 || br >= board.length || bc < 0 || bc >= board[0].length) return false;
-      if (board[br][bc] !== null) return false;
+      if (board[br][bc] !== null || isSealed(sealedLines, br, bc)) return false;
     }
   }
   return true;
@@ -34,6 +37,7 @@ export function placeCard(
   startRow: number,
   startCol: number
 ): BoardState {
+  if (card.type === 'Curse') return board;
   const newBoard = board.map((row) => [...row]);
   for (let r = 0; r < card.shape.length; r++) {
     for (let c = 0; c < card.shape[r].length; c++) {
@@ -750,6 +754,11 @@ export function getEnemyEncounter(stage: number, type: 'normal' | 'elite'): Enem
 }
 
 export const ARTIFACT_DEFS: Record<string, Omit<Artifact, 'id'>> = {
+  ofuda: {
+    name: 'お札', rarity: 'uncommon',
+    description: '手札の呪いをクリックすると1MPを消費して捨て札に送り、ターン終了時の発動を回避する。',
+    isEliteDrop: false, isShopSale: true, isEventReward: false,
+  },
   lantern: {
     name: 'ランタン',
     rarity: 'common',

@@ -1,3 +1,4 @@
+import { weaknessBonus, emptyCurseEffects } from '../curses';
 import type { BossId, BossBattle, Enemy, GameState, LineTarget, Status } from '../types';
 
 export const BOSSES: Record<BossId, { name: string; stage: number; hp: number; gold: number; summary: string; cycle: string[] }> = {
@@ -141,7 +142,8 @@ export function executeBossTurn(state: GameState): GameState {
   const fallen = state.statuses.some(s => s.type === 'fallen');
   const reflect = state.statuses.find(s => s.type === 'reflect')?.value ?? 0;
   function hit(damage: number, enemyId?: string) {
-    const amount = fallen ? Math.floor(damage * 1.5) : damage;
+    const increased = damage > 0 ? damage + weaknessBonus(next.board) : 0;
+    const amount = fallen ? Math.floor(increased * 1.5) : increased;
     const absorbed = Math.min(shield, amount); shield -= absorbed;
     next.hp = Math.max(0, next.hp - (amount - absorbed));
     if (enemyId && reflect && amount > absorbed) next.enemies = next.enemies.map(e => e.id === enemyId ? { ...e, hp: Math.max(0, e.hp - reflect) } : e);
@@ -184,7 +186,7 @@ export function executeBossTurn(state: GameState): GameState {
   }
   next.enemies = next.enemies.filter(e => e.hp > 0).map(e => ({ ...e, summoned: false }));
   if (!next.enemies.some(e => e.bossRole !== 'minion')) next.enemies = [];
-  if (next.hp <= 0) return { ...next, screen: 'gameover', bossBattle: null };
+  if (next.hp <= 0) return { ...next, screen: 'gameover', bossBattle: null, sealedLines: [], pendingCurseEffects: emptyCurseEffects() };
   next.bossBattle = { ...b, turn: b.turn + 1 };
   return next;
 }

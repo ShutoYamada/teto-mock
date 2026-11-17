@@ -1,17 +1,17 @@
 import { useState, type Dispatch } from 'react';
 import type { GameCommand } from '../gameReducer';
-import type { GameState, TetrominoType } from '../types';
+import type { GameState, TetrominoType, MinoCard } from '../types';
 import { BASIC_ENHANCEMENTS, TETROMINO_DEFS } from '../tetrominos';
 import { TetrominoCard } from './TetrominoCard';
 
 export function SuspiciousMagicEvent({ state, dispatch }: { state: GameState; dispatch: Dispatch<GameCommand> }) {
   const [selectedType, setSelectedType] = useState<TetrominoType | null>(null);
-  const candidates = state.deck.filter((card, index, deck) =>
+  const candidates = state.deck.filter((card): card is MinoCard => !card.curse).filter((card, index, deck) =>
     BASIC_ENHANCEMENTS[card.type] && deck.findIndex(other => other.type === card.type) === index);
   const selectedCard = candidates.find(card => card.type === selectedType);
   const enhancedType = selectedCard ? BASIC_ENHANCEMENTS[selectedCard.type] : undefined;
   const enhanced = enhancedType ? TETROMINO_DEFS[enhancedType] : undefined;
-  const count = state.deck.filter(card => card.type === selectedType).length;
+  const count = state.deck.filter(card => !card.curse && card.type === selectedType).length;
 
   return (
     <div className="rest-screen">
@@ -26,7 +26,7 @@ export function SuspiciousMagicEvent({ state, dispatch }: { state: GameState; di
               <div key={card.type} className="magic-mino-option">
                 <TetrominoCard card={card} isSelected={selectedType === card.type}
                   onClick={() => setSelectedType(card.type)} />
-                <span>{state.deck.filter(other => other.type === card.type).length}枚 → {BASIC_ENHANCEMENTS[card.type]}</span>
+                <span>{state.deck.filter(other => !other.curse && other.type === card.type).length}枚 → {BASIC_ENHANCEMENTS[card.type]}</span>
               </div>
             ))}
           </div>

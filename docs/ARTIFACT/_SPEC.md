@@ -31,3 +31,5 @@
 - [勇者の剣](./1_BraveSword.md)
 
 - [ランタン](./Lantern.md)
+
+- [お札](./Ofuda.md)（店売り限定）

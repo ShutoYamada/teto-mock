@@ -25,6 +25,7 @@ UIやゲームルールをブラッシュアップするために、React・Type
 | [ARTIFACT_SPEC.md](./docs/ARTIFACT/_SPEC.md) | アーティファクトに関する仕様                                               |
 | [BATTLE/_SPEC.md](./docs/BATTLE/_SPEC.md) | 戦闘・デッキ・カード・ダメージ計算の仕様 |
 | [CUSTOM_MINO/_SPEC.md](./docs/CUSTOM_MINO/_SPEC.md) | カスタムミノの仕様 |
+| [CURSE/_SPEC.md](./docs/CURSE/_SPEC.md) | 呪いカードの共通仕様・各カードの仕様 |
 | [EVENT/_SPEC.md](./docs/EVENT/_SPEC.md) | ランダムイベントの仕様 |
 | [REST/_SPEC.md](./docs/REST/_SPEC.md) | 休憩所の仕様 |
 | [SHOP/_SPEC.md](./docs/SHOP/_SPEC.md) | ショップの仕様 |
@@ -37,5 +38,5 @@ UIやゲームルールをブラッシュアップするために、React・Type
 - `pnpm build`: 本番用ビルド
 - `pnpm exec tsc --noEmit`: 型チェック（buildには含まれない）
 - `pnpm typecheck`: 型チェック
-- `pnpm test`: ボスの行動・固有能力・ステージ進行・報酬の回帰テスト
+- `pnpm test`: ボスの行動・固有能力・ステージ進行・報酬・呪いの回帰テスト
 - 現在、Lintの実行スクリプトは定義されていない

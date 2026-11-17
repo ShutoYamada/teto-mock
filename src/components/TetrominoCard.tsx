@@ -1,16 +1,22 @@
+import { CURSE_DEFS, CURSE_USE_COST } from '../curses';
 import type { TetrominoCard as TetrominoCardType } from '../types';
 
 interface TetrominoCardProps {
   card: TetrominoCardType;
   isSelected: boolean;
   onClick: () => void;
+  canUseCurse?: boolean;
 }
 
 const PREVIEW_CELL_SIZE = 14;
 
-export function TetrominoCard({ card, isSelected, onClick }: TetrominoCardProps) {
+export function TetrominoCard({ card, isSelected, onClick, canUseCurse = false }: TetrominoCardProps) {
   const rows = card.shape.length;
   const cols = card.shape[0].length;
+
+  const effectText = card.curse && canUseCurse
+    ? `お札：${CURSE_USE_COST}MPで使用し、捨て札に送る。${CURSE_DEFS[card.curse].description}`
+    : card.effectText;
 
   return (
     <button
@@ -21,21 +27,22 @@ export function TetrominoCard({ card, isSelected, onClick }: TetrominoCardProps)
           ? { borderColor: card.color, boxShadow: `0 0 20px ${card.glowColor}, 0 0 40px ${card.glowColor}` }
           : { borderColor: card.color + '55' }
       }
-      title={`テトリミノ ${card.type}`}
+      title={card.curse ? `${CURSE_DEFS[card.curse].name}：${effectText}` : `テトリミノ ${card.type}`}
     >
-      <div className="card-stat-attack" title="基礎攻撃力">{card.attack}</div>
-      <div className="card-stat-cost" title="コスト">{card.cost}</div>
+      {!card.curse && <div className="card-stat-attack" title="基礎攻撃力">{card.attack}</div>}
+      {(!card.curse || canUseCurse) && <div className="card-stat-cost" title="コスト">{card.curse ? CURSE_USE_COST : card.cost}</div>}
       
       <div className="card-tooltip">
-        {card.effectText ? card.effectText : `基礎攻撃力：${card.attack}`}
+        {effectText ? effectText : `基礎攻撃力：${card.attack}`}
       </div>
 
       <div className="card-type-label" style={{ color: card.color }}>
-        {card.type}
+        {card.curse ? CURSE_DEFS[card.curse].name : card.type}
       </div>
       <div className="card-rarity-label" data-rarity={card.rarity}>
-        {card.rarity.toUpperCase()}
+        {card.curse ? (canUseCurse ? '呪い・お札で使用' : '呪い・使用不可') : card.rarity.toUpperCase()}
       </div>
+      {card.curse && <div className="curse-card-symbol" aria-hidden="true">呪</div>}
       <div
         className="card-preview"
         style={{

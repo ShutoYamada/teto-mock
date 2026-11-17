@@ -1,12 +1,12 @@
+export type CurseType = 'decay' | 'frailty' | 'depletion' | 'sluggishness' | 'blockade';
 export type TetrominoType = DefaultTetrominoType | CustomTetrominoType; 
 export type DefaultTetrominoType = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
 export type CustomTetrominoType = 'Sword' | 'Shield' | 'Mana' | 'Cross' | 'SquareBomb' | 'Draw' | 'PainfulCapitalIncrease' | 'GoldVein' | 'OneTwo' | 'Jab' | 'Bow' | 'Heart' | 'BigHeart' | 'Obsidian' | 'Diamond' | 'SilverBullet' | 'Note' | 'Cymbal' | 'Flute' | 'Guitar' | 'GravityStone' | 'FloatingStone' | 'LeftRight' | 'LookThatWay' | 'Booster' | 'RocketHead' | 'EnhancedI' | 'EnhancedO' | 'EnhancedT' | 'EnhancedS' | 'EnhancedZ' | 'EnhancedJ' | 'EnhancedL';
 
-export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo' | 'bow' | 'heart' | 'hard' | 'resonance' | 'gravity_down' | 'gravity_up' | 'gravity_right' | 'gravity_left' | 'spore';
+export type BlockType = 'normal' | 'bomb' | 'sword' | 'shield' | 'mana' | 'draw' | 'spike' | 'gold' | 'border' | 'stripe' | 'trash' | 'combo' | 'bow' | 'heart' | 'hard' | 'resonance' | 'gravity_down' | 'gravity_up' | 'gravity_right' | 'gravity_left' | 'spore' | 'weakness';
 
-export interface TetrominoCard {
+interface CardData {
   id: string;
-  type: TetrominoType;
   shape: boolean[][];
   blockTypes?: BlockType[][]; // Optional defining what block each mapped true space in shape has
   color: string;
@@ -16,6 +16,10 @@ export interface TetrominoCard {
   effectText?: string;
   rarity: 'default' | 'common' | 'uncommon' | 'rare';
 }
+
+export type MinoCard = CardData & { type: TetrominoType; curse?: undefined };
+export type CurseCard = CardData & { type: 'Curse'; curse: CurseType };
+export type TetrominoCard = MinoCard | CurseCard;
 
 export interface CellData {
   type: TetrominoType;
@@ -108,6 +112,8 @@ export interface BossBattle {
 }
 
 export interface GameState {
+  pendingCurseEffects: { mpLoss: number; drawLoss: number; sealedLines: LineTarget[] };
+  sealedLines: LineTarget[];
   screen: ScreenState;
   board: BoardState;
   boardSize: number;

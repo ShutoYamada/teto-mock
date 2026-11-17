@@ -5,10 +5,11 @@ interface HandProps {
   hand: TetrominoCardType[];
   selectedCardId: string | null;
   onCardClick: (id: string) => void;
+  hasOfuda?: boolean;
   onRotate: (id: string) => void;
 }
 
-export function Hand({ hand, selectedCardId, onCardClick, onRotate }: HandProps) {
+export function Hand({ hand, selectedCardId, onCardClick, onRotate, hasOfuda = false }: HandProps) {
   return (
     <div className="hand">
       <div className="hand-label">手札</div>
@@ -19,6 +20,7 @@ export function Hand({ hand, selectedCardId, onCardClick, onRotate }: HandProps)
             <div key={card.id} className="hand-card-container">
               <TetrominoCard
                 card={card}
+                canUseCurse={hasOfuda}
                 isSelected={isSelected}
                 onClick={() => onCardClick(card.id)}
               />

@@ -1,3 +1,4 @@
+import { weaknessBonus } from '../curses';
 import { GameState, TetrominoCard } from '../types';
 import { BOSSES, bossStep, bossCellMarkers, lineLabel } from '../battle/bosses';
 import { Board } from './Board';
@@ -45,6 +46,7 @@ export function BattleScreen({
       <div className="battle-hud">
         <div className="player-stats">
           <div className="stat-row">HP: {state.hp} / {state.maxHp}</div>
+          {weaknessBonus(state.board) > 0 && <div className="stat-row">弱点：被ダメージ +{weaknessBonus(state.board)}</div>}
           <div className="stat-row">MP: {state.mp} / {state.maxMp}</div>
           <div className="stat-row" style={{ color: '#FFD700', fontWeight: 'bold' }}>💰 Gold: {state.gold}</div>
           {state.shield > 0 && (
@@ -122,10 +124,13 @@ export function BattleScreen({
             : '手札のカードを選んでMPを消費して配置してください'}
       </div>
 
+      {state.sealedLines.length > 0 && <p className="hint">封鎖中：{state.sealedLines.map(lineLabel).join('・')}（このターン終了まで）</p>}
+      {state.turn === 'enemy' && <p className="hint" aria-live="polite">次ターン：MP −{state.pendingCurseEffects.mpLoss} / ドロー −{state.pendingCurseEffects.drawLoss}{state.pendingCurseEffects.sealedLines.length > 0 ? ` / 封鎖 ${state.pendingCurseEffects.sealedLines.map(lineLabel).join('・')}` : ''}</p>}
       {/* Main Game Area */}
       <main className="game-area">
         <Board
           board={state.board}
+          sealedLines={state.sealedLines}
           selectedCard={state.turn === 'player' ? selectedCard : null}
           onCellClick={(r, c) => {
             if (state.turn === 'player') onCellClick(r, c);
@@ -138,6 +143,7 @@ export function BattleScreen({
       <footer className="footer">
         <Hand
           hand={state.hand}
+          hasOfuda={state.artifacts.some(a => a.id === 'ofuda')}
           selectedCardId={state.selectedCardId}
           onCardClick={(id) => {
              if (state.turn === 'player') onCardClick(id);

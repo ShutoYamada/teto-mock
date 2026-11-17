@@ -38,14 +38,14 @@ pnpm build
 # TypeScriptの型チェック
 pnpm typecheck
 
-# ボス戦・ステージ進行の回帰テスト
+# ボス戦・ステージ進行・呪いの回帰テスト
 pnpm test
 
 # ビルド結果を確認（先にpnpm buildを実行）
 pnpm preview
 ```
 
-`pnpm build`は型チェックを含みません。ボス戦・ステージ進行の自動テストを用意しています。Lintの実行スクリプトは現在定義されていません。変更内容に応じてビルド、型チェック、ブラウザでの動作確認を行います。
+`pnpm build`は型チェックを含みません。ボス戦・ステージ進行・呪いの自動テストを用意しています。Lintの実行スクリプトは現在定義されていません。変更内容に応じてビルド、型チェック、ブラウザでの動作確認を行います。
 
 ## 基本操作
 
@@ -63,6 +63,8 @@ pnpm preview
 | `src/components/` | 各画面、盤面、手札などのUI |
 | `src/gameReducer.ts` | ゲームの状態更新・進行処理 |
 | `src/gameLogic.ts` | ゲームロジック |
+| `tests/curses.test.ts` | 呪い・弱点ブロック・封鎖状態の回帰テスト |
+| `src/curses.ts` | 呪いカードの定義・生成・ターン終了時の発動処理 |
 | `tests/bosses.test.ts` | ボス戦・ステージ進行・報酬の回帰テスト |
 | `src/battle/` | 戦闘イベント、ダメージ処理、各種効果 |
 | `src/tetrominos.ts` | ミノ・カードなどの定義 |

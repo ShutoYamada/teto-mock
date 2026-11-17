@@ -11,7 +11,7 @@ export function ExplorationEvent({ state, dispatch }: { state: GameState; dispat
   const isCircle = id === 'unstable_circle';
   const needsCard = isCircle || id === 'forgotten_library' || id === 'rusty_forge';
   const candidates = state.deck.filter((card, index, deck) => id === 'rusty_forge' ? card.attack >= 2
-    : isCircle ? BASIC_ENHANCEMENTS[card.type] && deck.findIndex(c => c.type === card.type) === index : true);
+    : isCircle ? !card.curse && BASIC_ENHANCEMENTS[card.type] && deck.findIndex(c => !c.curse && c.type === card.type) === index : true);
   const selected = candidates.find(card => card.id === selectedId);
   let description = '', action = '', unavailable = '';
   switch (id) {
@@ -54,10 +54,10 @@ export function ExplorationEvent({ state, dispatch }: { state: GameState; dispat
         {needsCard && <div className="magic-mino-grid" aria-label={isCircle ? '対象の基礎ミノの種類' : '対象のカード'}>
           {candidates.map(card => <div className="magic-mino-option" key={card.id}>
             <TetrominoCard card={card} isSelected={selectedId === card.id} onClick={() => setSelectedId(card.id)} />
-            {isCircle && <span>{state.deck.filter(c => c.type === card.type).length}枚が対象</span>}
+            {isCircle && <span>{state.deck.filter(c => !c.curse && c.type === card.type).length}枚が対象</span>}
           </div>)}
         </div>}
-        {selected && <p role="status">{isCircle
+        {selected && <p role="status">{isCircle && !selected.curse
           ? `${selected.type} ${state.deck.filter(c => c.type === selected.type).length}枚が対象。成功時は${BASIC_ENHANCEMENTS[selected.type]}になります。`
           : id === 'rusty_forge' ? `${selected.type}の基礎攻撃力：${selected.attack} → ${selected.attack - 2}`
           : `${selected.type}を1枚削除します。残り${state.deck.length - 1}枚。`}</p>}
@@ -66,7 +66,7 @@ export function ExplorationEvent({ state, dispatch }: { state: GameState; dispat
         {unavailable && <p role="status">{unavailable}</p>}
         <div className="rest-remove-actions">
           <button className="rest-action-btn confirm" disabled={!!unavailable || (needsCard && !selected)}
-            onClick={() => dispatch({ type: 'EVENT_EXPLORE_RESOLVE', cardId: selected?.id, minoType: selected?.type })}>{action}</button>
+            onClick={() => dispatch({ type: 'EVENT_EXPLORE_RESOLVE', cardId: selected?.id, minoType: selected && !selected.curse ? selected.type : undefined })}>{action}</button>
           <button className="rest-action-btn cancel" onClick={() => dispatch({ type: 'EVENT_LEAVE' })}>立ち去る（何も失わない）</button>
         </div>
       </div>

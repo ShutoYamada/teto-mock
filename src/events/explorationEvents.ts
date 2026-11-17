@@ -20,6 +20,7 @@ export function getEventPool(stage: number): GameEventId[] {
 }
 
 export function enhanceBasicCard(card: TetrominoCard): TetrominoCard {
+  if (card.curse) return card;
   const type = BASIC_ENHANCEMENTS[card.type];
   if (!type) return card;
   // A replacement takes the Enhanced definition, including resetting prior attack reductions.
@@ -70,13 +71,13 @@ export function resolveExplorationEvent(state: GameState, choice: { cardId?: str
     case 'unstable_circle': {
       const type = choice.minoType;
       if (!type || !BASIC_ENHANCEMENTS[type]) return state;
-      const cards = state.deck.filter(c => c.type === type);
+      const cards = state.deck.filter(c => !c.curse && c.type === type);
       if (!cards.length) return state;
       const roll = Math.random();
-      if (roll < .6) return finish({ deck: state.deck.map(c => c.type === type ? enhanceBasicCard(c) : c) },
+      if (roll < .6) return finish({ deck: state.deck.map(c => !c.curse && c.type === type ? enhanceBasicCard(c) : c) },
         `錬成成功！ ${type} ${cards.length}枚を${BASIC_ENHANCEMENTS[type]}に強化しました。`);
       if (roll < .85) return finish({}, '錬成陣の光が消えました。カードは変化しませんでした。');
-      return finish({ deck: state.deck.map(c => c.type === type ? { ...c, attack: Math.max(0, c.attack - 1) } : c) },
+      return finish({ deck: state.deck.map(c => !c.curse && c.type === type ? { ...c, attack: Math.max(0, c.attack - 1) } : c) },
         `錬成失敗。${type} ${cards.length}枚の基礎攻撃力がそれぞれ1低下しました（最低0）。`);
     }
     default: return state;
